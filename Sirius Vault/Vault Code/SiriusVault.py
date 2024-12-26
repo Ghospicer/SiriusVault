@@ -3,6 +3,8 @@ import json
 import hashlib
 import time
 import base64
+import shutil
+import sys
 from getpass4 import getpass
 from dotenv import load_dotenv
 from threading import Timer
@@ -91,7 +93,7 @@ def decrypt_file(vault_key, encrypted_filepath, filename, destination_path):
         dec_file.write(decrypted_data)
     return decrypted_path
 
-#In use
+# In use
 def encrypt_userdata_file(password):
     if not os.path.exists(USER_DATA_FILE):
         return
@@ -112,7 +114,7 @@ def encrypt_userdata_file(password):
         return
     return encrypted_path
 
-#In use
+# In use
 def encrypt_vaultdata_file(password):
     if not os.path.exists(VAULT_METADATA_FILE):
         return
@@ -133,7 +135,7 @@ def encrypt_vaultdata_file(password):
         return
     return encrypted_path
 
-#In use
+# In use
 def decrypt_userdata_file(password):
     decrypt_path = USER_DATA_FILE
     data_salt = bytes.fromhex(SYSTEM_SALT)
@@ -147,7 +149,7 @@ def decrypt_userdata_file(password):
         dec_file.write(decrypted_data)
     return decrypt_path
 
-#In use
+# In use
 def decrypt_vaultdata_file(password):
     decrypt_path = VAULT_METADATA_FILE
     data_salt = bytes.fromhex(SYSTEM_SALT)
@@ -161,7 +163,7 @@ def decrypt_vaultdata_file(password):
         dec_file.write(decrypted_data)
     return decrypt_path
 
-#In use
+# In use
 def calculate_file_hash(filepath):
     sha256_hash = hashlib.sha256()
     with open(filepath, 'rb') as f:
@@ -199,6 +201,27 @@ def authenticate_user(username, password):
     print("Incorrect password!")
     return False
 
+# Delete user
+def delete_user():
+
+    if os.path.exists(VAULTS_DIR):
+        vaults = os.listdir(VAULTS_DIR)
+        for vault in vaults:
+            vault_path = os.path.join(VAULTS_DIR, vault)
+            shutil.rmtree(vault_path)
+    if os.path.exists(USER_DATA_FILE):
+        os.remove(USER_DATA_FILE)
+    if os.path.exists(VAULT_METADATA_FILE):
+        os.remove(VAULT_METADATA_FILE)
+    
+    if not os.path.exists(USER_DATA_FILE) and not os.path.exists(VAULT_METADATA_FILE) and not os.listdir(VAULTS_DIR):
+        print("User deleted successfuly!")
+        print("Good Bye!")
+        first_menu()
+    else:
+        print("Something went wrong. Please be sure to close all files and try again.")
+        return
+
 # Vault Management
 def create_vault(vault_name, password): 
     if not is_session_active():
@@ -226,7 +249,7 @@ def create_vault(vault_name, password):
     else:
         print(f"Vault '{vault_name}' already exists.")
 
-#Open the vault
+# Open the vault
 def authenticate_vault(vault_name, vault_password):
     if not is_session_active():
         return None
@@ -247,7 +270,7 @@ def authenticate_vault(vault_name, vault_password):
     print("Incorrect password!")
     return None
 
-#List all vaults that user has
+# List all vaults that user has
 def list_vaults(username):
     if not is_session_active():
         return None
@@ -263,7 +286,36 @@ def list_vaults(username):
     else:
         print(f"No vaults found for user {username}.")
 
-#Add file to vault
+# Delete a vault
+def delete_vault(username, vault_name, vault_key):
+    if not is_session_active(username):
+        return None
+    username = session["authenticated_user"]
+    reset_session_timer()
+
+    with open(VAULT_METADATA_FILE, 'r') as f:
+        vaults = json.load(f)
+    metadata = vaults.items()
+    if vault_name not in vaults and metadata["owner"] != username:
+        print("Vault not found!")
+        return
+    
+    enc_vault_name = hashlib.sha256(vault_key + vault_name.encode('utf-8')).hexdigest()
+    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+
+    if os.path.exists(vault_folder):
+        shutil.rmtree(vault_folder)
+    else:
+        print("Vault folder not found!")
+        return
+    
+    del vaults[vault_name]
+
+    with open(VAULT_METADATA_FILE, 'w') as f:
+        json.dump(vaults, f)
+    print(f"Vault '{vault_name}' removed!")
+
+# Add file to vault
 def add_file_to_vault(vault_name, vault_key, filepath, username):
     if not is_session_active():
         return
@@ -301,7 +353,7 @@ def add_file_to_vault(vault_name, vault_key, filepath, username):
         json.dump(vaults, f)
     print(f"File '{os.path.basename(filepath)}' added to vault {vault_name}!")
 
-#List files in vault
+# List files in vault
 def list_files_in_vault(vault_name, username):
     if not is_session_active():
         return
@@ -317,7 +369,7 @@ def list_files_in_vault(vault_name, username):
     for file in vaults[vault_name]["files"]:
         print(f"  - {file['name']} (Size: {file['size']} bytes, Added: {file['date_added']})")
 
-#Remove file from vault
+# Remove file from vault
 def remove_file_from_vault(vault_name, file_name, username, vault_key):
     if not is_session_active():
         return
@@ -352,7 +404,7 @@ def remove_file_from_vault(vault_name, file_name, username, vault_key):
         json.dump(vaults, f)
     print(f"File '{file_name}' removed from vault!")
 
-#Extract file from vault
+# Extract file from vault
 def extract_file_from_vault(vault_name, vault_key, file_name, destination_path):
     if not is_session_active():
         return
@@ -391,12 +443,12 @@ def extract_file_from_vault(vault_name, vault_key, file_name, destination_path):
         return
     print(f"File '{file_metadata['name']}' extracted to '{destination_path}'")
 
-#First menu loop
+# First menu loop
 def first_menu():
     while True:
         print("\nSirius Vault")
         print("\n1. Create User")
-        print("\n0. Exit")
+        print("0. Exit")
         choice = input("Choose an option: ")
         if choice == "1":
             username = input("Username: ")
@@ -407,16 +459,17 @@ def first_menu():
             encrypt_userdata_file(user_password)
             main_menu()
         elif choice == "0":
-            break
+            print("Exiting the Sirius Vault.")
+            sys.exit()
         else:
             print("\nInvalid choice, please try again.")
 
-#Main menu loop
+# Main menu loop
 def main_menu():
     while True:
         print("\nSirius Vault")
         print("\n1. Log in")
-        print("\n0. Exit")
+        print("0. Exit")
         choice = input("Choose an option: ")
         if choice == "1":
             username = input("Enter username: ")
@@ -428,19 +481,22 @@ def main_menu():
             else:
                 encrypt_userdata_file()
         elif choice == "0":
-            break
+            print("Exiting the Sirius Vault.")
+            sys.exit()
         else:
             print("Invalid choice, please try again.")
 
-#Authenticate menu loop
+# Authenticate menu loop
 def authenticate_menu(username, user_password):
     while True:
         print(f"\nWelcome back {username}!")
         print("\n1. Create Vault")
-        print("\n2. Authenticate Vault")
-        print("\n3. List my vaults")
-        print("\n4. Logout")
-        print("\n0. Exit")
+        print("2. Authenticate Vault")
+        print("3. List my vaults")
+        print("4. Delete a vault")
+        print("5. Delete user (This will delete all user data)")
+        print("6. Logout")
+        print("0. Exit")
         choice = input("Choose an option: ")
         if choice == "1":
             vault_name = input("Enter vault name: ")
@@ -463,22 +519,50 @@ def authenticate_menu(username, user_password):
             list_vaults(username)
             encrypt_vaultdata_file(user_password)
         elif choice == "4":
+            decrypt_vaultdata_file(user_password)
+            list_vaults(username)
+            encrypt_vaultdata_file(user_password)
+            vault_name = input("Enter vault name you want to delete: ")
+            vault_password = getpass("Enter vault password: ")
+            decrypt_vaultdata_file(user_password)
+            vault_key = authenticate_vault(vault_name, vault_password)
+            encrypt_vaultdata_file(user_password)
+            if vault_key:
+                decrypt_vaultdata_file(user_password)
+                delete_vault(username, vault_name, vault_key)
+                encrypt_vaultdata_file(user_password)
+            else:
+                print("Wrong password!")
+        elif choice == "5":
+            print("Warning you are about to delete all vaults, files and user data!")
+            consent_confirm = input("Do you wish to continue?(Y/N)")
+            if consent_confirm == "Y" or "y" or "yes":
+                username = input("Enter username: ")
+                user_password = getpass("Enter password: ")
+                if authenticate_user(username, user_password):
+                    decrypt_userdata_file(user_password)
+                    decrypt_vaultdata_file(user_password)
+                    delete_user()
+                else:
+                    print("Wrong username or password")
+        elif choice == "6":
             logout_user()
         elif choice == "0":
-            break
+            print("Exiting the Sirius Vault.")
+            sys.exit()
         else:
             print("Invalid choice, please try again.")
 
-#Vault menu loop
+# Vault menu loop
 def vault_menu(vault_name, vault_password, username, user_password):
     while True:
         print(f"\nYou are in Vault {vault_name}")
         print("\n1. Add File to Vault")
-        print("\n2. List Files in Vault")
-        print("\n3. Remove File from Vault")
-        print("\n4. Extract File from Vault")
-        print("\n5. Back")
-        print("\n0. Exit")
+        print("2. List Files in Vault")
+        print("3. Remove File from Vault")
+        print("4. Extract File from Vault")
+        print("5. Back")
+        print("0. Exit")
         choice = input("Choose an option: ")
         if choice == "1":
             decrypt_vaultdata_file(user_password)
@@ -495,11 +579,10 @@ def vault_menu(vault_name, vault_password, username, user_password):
                 decrypt_vaultdata_file(user_password)
                 add_file_to_vault(vault_name, vault_key, filepath, username)
                 encrypt_vaultdata_file(user_password)
-                if file_remove == "Y" or "y":
+                if file_remove == "Y" or "y" or "yes":
                     os.remove(filepath)
             else:
                 print("Wrong password!")
-                encrypt_vaultdata_file(user_password)
         elif choice == "2":
             decrypt_vaultdata_file(user_password)
             list_files_in_vault(vault_name, username)
@@ -509,17 +592,22 @@ def vault_menu(vault_name, vault_password, username, user_password):
             vault_password = getpass("Enter vault password: ")
             decrypt_vaultdata_file(user_password)
             vault_key = authenticate_vault(vault_name, vault_password)
+            encrypt_vaultdata_file(user_password)
             if vault_key:
+                decrypt_vaultdata_file(user_password)
                 remove_file_from_vault(vault_name, file_name, username, vault_key)
                 encrypt_vaultdata_file(user_password)
             else:
-                encrypt_vaultdata_file(user_password)
+                print("Wrong password!")
         elif choice == "4":
             vault_password = getpass("Enter vault password: ")
             decrypt_vaultdata_file(user_password)
             vault_key = authenticate_vault(vault_name, vault_password)
             encrypt_vaultdata_file(user_password)
             if vault_key:
+                decrypt_vaultdata_file(user_password)
+                list_files_in_vault(vault_name, username)
+                encrypt_vaultdata_file(user_password)
                 file_name = input("Enter file name to extract: ")
                 destination_path = FILE_OUT
                 file_remove = input("Do you want to remove file from the vault after extraction?(Y/N)")
@@ -532,11 +620,11 @@ def vault_menu(vault_name, vault_password, username, user_password):
                     encrypt_vaultdata_file(user_password)
             else:
                 print("Wrong password!")
-                encrypt_vaultdata_file(user_password)
         elif choice == "5":
             authenticate_menu(username)
         elif choice == "0":
-            break
+            print("Exiting the Sirius Vault.")
+            sys.exit()
         else:
             print("Invalid choice, please try again.")
 
