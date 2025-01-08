@@ -536,7 +536,7 @@ def authenticate_menu(username, user_password):
         elif choice == "5":
             print("Warning you are about to delete all vaults, files and user data!")
             consent_confirm = input("Do you wish to continue?(Y/N)")
-            if consent_confirm == "Y" or "y" or "yes":
+            if consent_confirm.lower() == "y" or consent_confirm.lower() == "yes":
                 username = input("Enter username: ")
                 user_password = getpass("Enter password: ")
                 if authenticate_user(username, user_password):
@@ -579,7 +579,7 @@ def vault_menu(vault_name, vault_password, username, user_password):
                 decrypt_vaultdata_file(user_password)
                 add_file_to_vault(vault_name, vault_key, filepath, username)
                 encrypt_vaultdata_file(user_password)
-                if file_remove == "Y" or "y" or "yes":
+                if file_remove.lower() == "y" or file_remove.lower() == "yes":
                     os.remove(filepath)
             else:
                 print("Wrong password!")
@@ -614,7 +614,7 @@ def vault_menu(vault_name, vault_password, username, user_password):
                 decrypt_vaultdata_file(user_password)
                 extract_file_from_vault(vault_name, vault_key, file_name, destination_path)
                 encrypt_vaultdata_file(user_password)
-                if file_remove == "Y" or "y":
+                if file_remove.lower() == "y" or file_remove.lower() == "yes":
                     decrypt_vaultdata_file(user_password)
                     remove_file_from_vault(vault_name, file_name, username, vault_key)
                     encrypt_vaultdata_file(user_password)
