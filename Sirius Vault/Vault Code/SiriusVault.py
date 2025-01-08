@@ -13,7 +13,10 @@ from cryptography.fernet import Fernet
 load_dotenv()
 
 # Constants for user and vault management
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VAULTS_DIR = os.path.join(BASE_DIR, "..", "Vaults")
 FILE_IN = os.path.join(BASE_DIR, "..", "file in")
 FILE_OUT = os.path.join(BASE_DIR, "..", "file out")
@@ -213,6 +216,10 @@ def delete_user():
         os.remove(USER_DATA_FILE)
     if os.path.exists(VAULT_METADATA_FILE):
         os.remove(VAULT_METADATA_FILE)
+    if os.path.exists(ENC_USER_DATA_FILE):
+        os.remove(ENC_USER_DATA_FILE)
+    if os.path.exists(ENC_VAULT_METADATA_FILE):
+        os.remove(ENC_VAULT_METADATA_FILE)
     
     if not os.path.exists(USER_DATA_FILE) and not os.path.exists(VAULT_METADATA_FILE) and not os.listdir(VAULTS_DIR):
         print("User deleted successfuly!")
@@ -288,7 +295,7 @@ def list_vaults(username):
 
 # Delete a vault
 def delete_vault(username, vault_name, vault_key):
-    if not is_session_active(username):
+    if not is_session_active():
         return None
     username = session["authenticated_user"]
     reset_session_timer()
@@ -539,7 +546,10 @@ def authenticate_menu(username, user_password):
             if consent_confirm.lower() == "y" or consent_confirm.lower() == "yes":
                 username = input("Enter username: ")
                 user_password = getpass("Enter password: ")
-                if authenticate_user(username, user_password):
+                decrypt_userdata_file(user_password)
+                authBool = authenticate_user(username, user_password)
+                encrypt_userdata_file(user_password)
+                if authBool:
                     decrypt_userdata_file(user_password)
                     decrypt_vaultdata_file(user_password)
                     delete_user()
@@ -621,7 +631,7 @@ def vault_menu(vault_name, vault_password, username, user_password):
             else:
                 print("Wrong password!")
         elif choice == "5":
-            authenticate_menu(username)
+            authenticate_menu(username, user_password)
         elif choice == "0":
             print("Exiting the Sirius Vault.")
             sys.exit()
