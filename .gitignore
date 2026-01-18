@@ -27,5 +27,5 @@ config.json
 # IDE files
 .vscode/
 
-# .env (add a function that creates .env on launch)
+# .env
 .env

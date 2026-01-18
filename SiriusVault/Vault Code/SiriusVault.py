@@ -14,6 +14,7 @@ import secrets
 import re
 import subprocess
 import ctypes
+import stat
 import platform
 from PIL import Image
 from getpass4 import getpass
@@ -42,7 +43,7 @@ FILE_IN = os.path.join(BASE_DIR, "..", "file in")
 FILE_OUT = os.path.join(BASE_DIR, "..", "file out")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 SESSION_TIMEOUT = 300  # 5 minutes
-SYSTEM_SALT = os.getenv('SYSTEM_SALT')
+#SYSTEM_SALT = initialize_system_salt()
 
 # Initialize storage files if they do not exist
 if not os.path.exists(FILE_IN):
@@ -88,6 +89,94 @@ def exit_program():
     print("Exiting Sirius Vault.")
     sys.exit()
 
+# .env
+def set_file_readonly(filepath):
+    try:
+        os.chmod(filepath, stat.S_IREAD)
+    except Exception as e:
+        print(f"[WARNING] {filepath} can not locked: {e}")
+
+def remove_readonly(filepath):
+    try:
+        os.chmod(filepath, stat.S_IWRITE)
+    except Exception as e:
+        pass
+
+def initialize_system_salt():
+    env_path = os.path.join(BASE_DIR, ".env")
+
+    raw_env = os.getenv('SYSTEM_SALT')
+    salt_from_env = raw_env if raw_env and raw_env.strip() else None
+    salt_from_config = None
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config_data = json.load(f)
+                salt_from_config = config_data.get("system_salt_backup")
+        except:
+            pass
+    
+    final_salt = None
+
+    if salt_from_env:
+        final_salt = salt_from_env
+        if salt_from_config != salt_from_env:
+            if salt_from_config:
+                print(f"[WARNING] Salts not match. Using SALT from .env ({salt_from_env[:4]}...).")
+            try:
+                config_data = {}
+                if os.path.exists(CONFIG_FILE):
+                    with open(CONFIG_FILE, 'r') as f:
+                        try: config_data = json.load(f)
+                        except: config_data = {}
+                
+                config_data["system_salt_backup"] = final_salt
+                with open(CONFIG_FILE, 'w') as f:
+                    json.dump(config_data, f, indent=4)
+            except Exception as e:
+                print(f"[ERROR] Config backup failed: {e}")
+        set_file_readonly(env_path)
+    elif not salt_from_env and salt_from_config:
+        print("[WARNING] Missing .env file! Loading backup from config file...")
+        final_salt = salt_from_config
+        
+        try:
+            if os.path.exists(env_path): remove_readonly(env_path)
+            
+            with open(env_path, "w") as f:
+                f.write(f"SYSTEM_SALT={final_salt}")
+            
+            os.environ['SYSTEM_SALT'] = final_salt
+            set_file_readonly(env_path)
+        except Exception as e:
+            print(f"[ERROR] .env file cannot recovered: {e}")
+            sys.exit(1)
+    else:
+        print("[WARNING] System cannot find the SALT. Creating a new one...")
+        new_salt = secrets.token_hex(16)
+        final_salt = new_salt
+        
+        if os.path.exists(env_path): remove_readonly(env_path)
+        with open(env_path, "w") as f:
+            f.write(f"SYSTEM_SALT={new_salt}")
+        set_file_readonly(env_path)
+        
+        try:
+            config_data = {}
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, 'r') as f:
+                    try: config_data = json.load(f)
+                    except: config_data = {}
+            config_data["system_salt_backup"] = new_salt
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config_data, f, indent=4)
+        except:
+            pass
+
+    return final_salt
+
+SYSTEM_SALT = initialize_system_salt()
+
 # CONFIG FUNC (TEST)
 def load_config():
     if not os.path.exists(CONFIG_FILE):
@@ -110,7 +199,7 @@ def save_config(storage_path):
     except IOError as e:
         print(f"[ERROR] Configurations cannot saved: {e}")
 
-# INIT FUNC (TEST)
+# INIT FUNC
 def initialize_storage(target_path=None, default=True):
 
     global STORAGE_ROOT, VAULTS_DIR, DATA_FOLDER, USER_DATA_FILE, ENC_USER_DATA_FILE, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE
