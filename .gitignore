@@ -1,0 +1,31 @@
+# Local folders Terminal Version
+SiriusVault/file in/
+SiriusVault/file out/
+SiriusVault/Sirius Data/
+SiriusVault/src/
+SiriusVault/temp/
+SiriusVault/Vaults
+# Local folders GUI version
+SiriusVaultGUI/file in/
+SiriusVaultGUI/file out/
+SiriusVaultGUI/Vaults
+
+# Python compile files
+__pycache__
+*.pyc
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Local config
+config.json
+*.json
+*.json.enc
+
+# IDE files
+.vscode/
+
+# .env (add a function that creates .env on launch)
+.env
