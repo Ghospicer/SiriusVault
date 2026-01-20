@@ -28,4 +28,7 @@ config.json
 .vscode/
 
 # .env
+venv/
+env/
+.venv/
 .env
