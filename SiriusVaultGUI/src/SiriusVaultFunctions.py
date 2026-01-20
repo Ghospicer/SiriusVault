@@ -5,7 +5,10 @@ import hashlib
 import time
 import base64
 import shutil
+import sys
 import mimetypes
+import secrets
+import stat
 from PIL import Image
 from dotenv import load_dotenv
 from threading import Timer
@@ -13,24 +16,28 @@ from cryptography.fernet import Fernet
 
 load_dotenv()
 
-# Constants for user and vault management
+# Constants for user, password and vault management
+# GLOBAL PATH VARIABLES
+STORAGE_ROOT = None
+VAULTS_DIR = None
+DATA_FOLDER = None
+USER_DATA_FILE = None
+ENC_USER_DATA_FILE = None
+VAULT_METADATA_FILE = None
+ENC_VAULT_METADATA_FILE = None
+PASS_METADATA_FILE = None
+ENC_PASS_METADATA_FILE = None
+
+# LOCAL PATHS
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VAULTS_DIR = os.path.join(BASE_DIR, "..", "Vaults")
 TEMP_DIR = os.path.join(BASE_DIR, "..", "temp")
 FILE_IN = os.path.join(BASE_DIR, "..", "file in")
 FILE_OUT = os.path.join(BASE_DIR, "..", "file out")
-USER_DATA_FILE = os.path.join(BASE_DIR, "users.json")
-ENC_USER_DATA_FILE = os.path.join(BASE_DIR, "users.json.enc")
-VAULT_METADATA_FILE = os.path.join(BASE_DIR, "vault_metadata.json")
-ENC_VAULT_METADATA_FILE = os.path.join(BASE_DIR, "vault_metadata.json.enc")
-PASS_METADATA_FILE = os.path.join(BASE_DIR, "pass_metadata.json")
-ENC_PASS_METADATA_FILE = os.path.join(BASE_DIR, "pass_metadata.json.enc")
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 SESSION_TIMEOUT = 300  # 5 minutes
-SYSTEM_SALT = os.getenv('SYSTEM_SALT')
+#SYSTEM_SALT = initialize_system_salt()
 
 # Initialize storage files if they do not exist
-if not os.path.exists(VAULTS_DIR):
-    os.makedirs(VAULTS_DIR)
 if not os.path.exists(FILE_IN):
     os.makedirs(FILE_IN)
 if not os.path.exists(FILE_OUT):
@@ -66,6 +73,101 @@ def logout_user():
     session["session_expiry"] = None
     print("\nSession expired. Please authenticate again.")
     return True
+
+def exit_program():
+    global session_timer
+    if session_timer:
+        session_timer.cancel()
+    print("Exiting Sirius Vault.")
+    sys.exit()
+
+# .env
+def set_file_readonly(filepath):
+    try:
+        os.chmod(filepath, stat.S_IREAD)
+    except Exception as e:
+        print(f"[WARNING] {filepath} can not locked: {e}")
+
+def remove_readonly(filepath):
+    try:
+        os.chmod(filepath, stat.S_IWRITE)
+    except Exception as e:
+        pass
+
+def initialize_system_salt():
+    env_path = os.path.join(BASE_DIR, ".env")
+
+    raw_env = os.getenv('SYSTEM_SALT')
+    salt_from_env = raw_env if raw_env and raw_env.strip() else None
+    salt_from_config = None
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config_data = json.load(f)
+                salt_from_config = config_data.get("system_salt_backup")
+        except:
+            pass
+    
+    final_salt = None
+
+    if salt_from_env:
+        final_salt = salt_from_env
+        if salt_from_config != salt_from_env:
+            if salt_from_config:
+                print(f"[WARNING] Salts not match. Using SALT from .env ({salt_from_env[:4]}...).")
+            try:
+                config_data = {}
+                if os.path.exists(CONFIG_FILE):
+                    with open(CONFIG_FILE, 'r') as f:
+                        try: config_data = json.load(f)
+                        except: config_data = {}
+                
+                config_data["system_salt_backup"] = final_salt
+                with open(CONFIG_FILE, 'w') as f:
+                    json.dump(config_data, f, indent=4)
+            except Exception as e:
+                print(f"[ERROR] Config backup failed: {e}")
+        set_file_readonly(env_path)
+    elif not salt_from_env and salt_from_config:
+        print("[WARNING] Missing .env file! Loading backup from config file...")
+        final_salt = salt_from_config
+        
+        try:
+            if os.path.exists(env_path): remove_readonly(env_path)
+            
+            with open(env_path, "w") as f:
+                f.write(f"SYSTEM_SALT={final_salt}")
+            
+            os.environ['SYSTEM_SALT'] = final_salt
+            set_file_readonly(env_path)
+        except Exception as e:
+            print(f"[ERROR] .env file cannot recovered: {e}")
+            sys.exit(1)
+    else:
+        print("[WARNING] System cannot find the SALT. Creating a new one...")
+        new_salt = secrets.token_hex(16)
+        final_salt = new_salt
+        
+        if os.path.exists(env_path): remove_readonly(env_path)
+        with open(env_path, "w") as f:
+            f.write(f"SYSTEM_SALT={new_salt}")
+        set_file_readonly(env_path)
+        
+        try:
+            config_data = {}
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, 'r') as f:
+                    try: config_data = json.load(f)
+                    except: config_data = {}
+            config_data["system_salt_backup"] = new_salt
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config_data, f, indent=4)
+        except:
+            pass
+
+    return final_salt
+
+SYSTEM_SALT = initialize_system_salt()
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
@@ -204,7 +306,7 @@ def decrypt_passdata_file(password):
         dec_file.write(decrypted_data)
     return decrypted_path
 
-# Multimedia Manager (Out of Order)
+# Multimedia Manager (TESTING)
 def multimedia_manager(vault_name, vault_key, file_name):
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
