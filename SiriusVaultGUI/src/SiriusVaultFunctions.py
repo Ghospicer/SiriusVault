@@ -8,8 +8,11 @@ import shutil
 import sys
 import mimetypes
 import secrets
+import subprocess
+import ctypes
 import stat
 from PIL import Image
+from getpass4 import getpass
 from dotenv import load_dotenv
 from threading import Timer
 from cryptography.fernet import Fernet
@@ -168,6 +171,76 @@ def initialize_system_salt():
     return final_salt
 
 SYSTEM_SALT = initialize_system_salt()
+
+# CONFIG FUNC (TEST)
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        return None
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
+    
+# Save config
+def save_config(storage_path):
+    config_data = {
+        "last_storage_root": os.path.abspath(storage_path),
+        "last_access_date": time.strftime('%Y-%m-%d %H:%M:%S')
+    }
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config_data, f, indent=4)
+    except IOError as e:
+        print(f"[ERROR] Configurations cannot saved: {e}")
+
+# INIT FUNC
+def initialize_storage(target_path=None, default=True):
+
+    global STORAGE_ROOT, VAULTS_DIR, DATA_FOLDER, USER_DATA_FILE, ENC_USER_DATA_FILE, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE
+
+
+    if default:
+        STORAGE_ROOT = os.path.join(BASE_DIR, "..")
+        DATA_FOLDER = os.path.join(STORAGE_ROOT, "SiriusData")
+    else:
+        if target_path is None:
+            print("ERROR: You need to declare a path for setup.")
+            return False
+        
+        raw_path = os.path.abspath(target_path)
+        STORAGE_ROOT = os.path.join(raw_path, "SiriusVault")
+        DATA_FOLDER = os.path.join(STORAGE_ROOT, "SiriusData")
+        if not os.path.exists(STORAGE_ROOT):
+            try:
+                os.makedirs(STORAGE_ROOT)
+                #print(f"New Storage Root created: {STORAGE_ROOT}")
+            except OSError as e:
+                print(f"ERROR: Storage root can not created or not reachable: {e}")
+                return False
+
+    VAULTS_DIR = os.path.join(STORAGE_ROOT, "Vaults")
+    USER_DATA_FILE = os.path.join(DATA_FOLDER, "users.json")
+    ENC_USER_DATA_FILE = os.path.join(DATA_FOLDER, "users.json.enc")
+    VAULT_METADATA_FILE = os.path.join(DATA_FOLDER, "vault_metadata.json")
+    ENC_VAULT_METADATA_FILE = os.path.join(DATA_FOLDER, "vault_metadata.json.enc")
+    PASS_METADATA_FILE = os.path.join(DATA_FOLDER, "pass_metadata.json")
+    ENC_PASS_METADATA_FILE = os.path.join(DATA_FOLDER, "pass_metadata.json.enc")
+
+    if not os.path.exists(VAULTS_DIR):
+        try:
+            os.makedirs(VAULTS_DIR)
+        except OSError as e:
+            print(f"[ERROR] Vaults Directory can not created or not reachable: {e}")
+            return False
+    if not os.path.exists(DATA_FOLDER):
+        try:
+            os.makedirs(DATA_FOLDER)
+        except OSError as e:
+            print(f"[ERROR] Data directory can not created or not reachable: {e}")
+            return False
+    save_config(STORAGE_ROOT)
+    return True
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
@@ -348,6 +421,52 @@ def calculate_file_hash(filepath):
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
+
+# External Vault Functions
+def format_drive_windows(drive_path):
+    try:
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        is_admin = False
+
+    if not is_admin:
+        print("\n[ERROR] To format the external storage drive, you must run this program as administrator!")
+        return False
+    
+    drive_letter = os.path.splitdrive(drive_path)[0]
+
+    if not drive_letter:
+        print("Invalid driver path.")
+        return False
+    
+    if drive_letter.upper() == "C:":
+        print("\n[ERROR] Drive C: cannot be formatted with this program for security reasons!")
+        return False
+    
+    print(f"\nATTENTION")
+    print(f"You are about to delete everything in drive {drive_letter} and name it 'SIRIUS_VAULT'.")
+    print("This operation is not reversible.")
+
+    confirm_code = f"FORMAT {drive_letter.upper()}"
+    user_input = input(f"If you are accepting this please enter exactly this line -> '{confirm_code}':")
+    if user_input != confirm_code:
+        print("Confirmation error. Canceling process.")
+        return False
+
+    print("\nFormatting process beginning... Please do not remove external drive.")
+    print("This process may take a while depending on the drive size.")
+
+    try:
+        cmd = f'format {drive_letter} /FS:exFAT /V:SIRIUS_VAULT /Q /Y'
+        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        
+        print(f"\n[SUCCESS] {drive_letter} drive cleaned and named 'SIRIUS_VAULT'.")
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"\n[ERROR] Formatting failed.")
+        print("Possible causes: The disk may be in use or write-protected.")
+        return False
 
 # User Management
 def create_user(username, password):
