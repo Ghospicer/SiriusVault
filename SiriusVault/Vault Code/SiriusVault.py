@@ -29,6 +29,7 @@ load_dotenv()
 STORAGE_ROOT = None
 VAULTS_DIR = None
 DATA_FOLDER = None
+USER_DIR = None
 USER_DATA_FILE = None
 ENC_USER_DATA_FILE = None
 VAULT_METADATA_FILE = None
@@ -43,7 +44,6 @@ FILE_IN = os.path.join(BASE_DIR, "..", "file in")
 FILE_OUT = os.path.join(BASE_DIR, "..", "file out")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 SESSION_TIMEOUT = 300  # 5 minutes
-#SYSTEM_SALT = initialize_system_salt()
 
 # Initialize storage files if they do not exist
 if not os.path.exists(FILE_IN):
@@ -80,7 +80,6 @@ def logout_user():
     session["authenticated_user"] = None
     session["session_expiry"] = None
     print("\nSession expired. Please authenticate again.")
-    main_menu()
 
 def exit_program():
     global session_timer
@@ -202,8 +201,7 @@ def save_config(storage_path):
 # INIT FUNC
 def initialize_storage(target_path=None, default=True):
 
-    global STORAGE_ROOT, VAULTS_DIR, DATA_FOLDER, USER_DATA_FILE, ENC_USER_DATA_FILE, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE
-
+    global STORAGE_ROOT, VAULTS_DIR, DATA_FOLDER
 
     if default:
         STORAGE_ROOT = os.path.join(BASE_DIR, "..")
@@ -219,25 +217,10 @@ def initialize_storage(target_path=None, default=True):
         if not os.path.exists(STORAGE_ROOT):
             try:
                 os.makedirs(STORAGE_ROOT)
-                #print(f"New Storage Root created: {STORAGE_ROOT}")
             except OSError as e:
                 print(f"ERROR: Storage root can not created or not reachable: {e}")
                 return False
 
-    VAULTS_DIR = os.path.join(STORAGE_ROOT, "Vaults")
-    USER_DATA_FILE = os.path.join(DATA_FOLDER, "users.json")
-    ENC_USER_DATA_FILE = os.path.join(DATA_FOLDER, "users.json.enc")
-    VAULT_METADATA_FILE = os.path.join(DATA_FOLDER, "vault_metadata.json")
-    ENC_VAULT_METADATA_FILE = os.path.join(DATA_FOLDER, "vault_metadata.json.enc")
-    PASS_METADATA_FILE = os.path.join(DATA_FOLDER, "pass_metadata.json")
-    ENC_PASS_METADATA_FILE = os.path.join(DATA_FOLDER, "pass_metadata.json.enc")
-
-    if not os.path.exists(VAULTS_DIR):
-        try:
-            os.makedirs(VAULTS_DIR)
-        except OSError as e:
-            print(f"[ERROR] Vaults Directory can not created or not reachable: {e}")
-            return False
     if not os.path.exists(DATA_FOLDER):
         try:
             os.makedirs(DATA_FOLDER)
@@ -246,6 +229,25 @@ def initialize_storage(target_path=None, default=True):
             return False
     save_config(STORAGE_ROOT)
     return True
+
+def load_user_context(username):
+    
+    global USER_DIR, VAULTS_DIR, USER_DATA_FILE, ENC_USER_DATA_FILE, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE
+
+    user_hash = hashlib.sha256(username.encode('utf-8')).hexdigest()
+
+    USER_DIR = os.path.join(DATA_FOLDER, user_hash)
+
+    VAULTS_DIR = os.path.join(USER_DIR, "Vaults")
+
+    USER_DATA_FILE = os.path.join(USER_DIR, "user.json")
+    ENC_USER_DATA_FILE = os.path.join(USER_DIR, "user.json.enc")
+    VAULT_METADATA_FILE = os.path.join(USER_DIR, "vault_metadata.json")
+    ENC_VAULT_METADATA_FILE = os.path.join(USER_DIR, "vault_metadata.json.enc")
+    PASS_METADATA_FILE = os.path.join(USER_DIR, "pass_metadata.json")
+    ENC_PASS_METADATA_FILE = os.path.join(USER_DIR, "pass_metadata.json.enc")
+
+    return USER_DIR
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
@@ -531,59 +533,72 @@ def format_drive_windows(drive_path):
 
 # User Management
 def create_user(username, password):
-    with open(USER_DATA_FILE, 'r') as f:
-        users = json.load(f)
-    if username in users:
-        print("User already exists!")
-        return    
+
+    load_user_context(username)
+
+    if os.path.exists(USER_DIR):
+        print("User already existing.")
+        return False
+    else:
+        os.makedirs(USER_DIR)
+    if not os.path.exists(VAULTS_DIR):
+        os.makedirs(VAULTS_DIR)
+    
     key, salt =generate_key(password)
-    users[username] = {"password_hash": key.hex(), "salt": salt.hex()}
+    user_data = {"username": username, "password_hash": key.hex(), "salt": salt.hex()}
     with open(USER_DATA_FILE, 'w') as f:
-        json.dump(users, f)
+        json.dump(user_data, f)
+    encrypt_userdata_file(password)
     print(f"User '{username}' registered successfully!")
+    print("You can login now.")
+    return True
 
 def authenticate_user(username, password):
-    with open(USER_DATA_FILE, 'r') as f:
-        users = json.load(f)
-    if username not in users:
+
+    load_user_context(username)
+    if not os.path.exists(ENC_USER_DATA_FILE):
+        print("User not registered.")
+        return False
+    try:
+        decrypt_userdata_file(password)
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+        stored_salt = bytes.fromhex(user_data["salt"])
+        stored_password_hash = bytes.fromhex(user_data["password_hash"])
+        derived_key, _ = generate_key(password, stored_salt)
+        if stored_password_hash == derived_key:
+            print("User Authentication successful!")
+            session["authenticated_user"] = username
+            reset_session_timer()
+            encrypt_userdata_file(password)
+            return True
+        else:
+            encrypt_userdata_file(password)
+            return False
+    except Exception as e:
+        encrypt_userdata_file(password)
         print("Incorrect Username or Password!")
         return False
-    salt = bytes.fromhex(users[username]["salt"])
-    stored_password_hash = bytes.fromhex(users[username]["password_hash"])
-    password_hash, _ = generate_key(password, salt)
-    if stored_password_hash == password_hash:
-        print("User Authentication successful!")
-        session["authenticated_user"] = username
-        reset_session_timer()
-        return True
-    print("Incorrect Username or Password!")
-    return False
 
 # Delete user
 def delete_user():
-
-    if os.path.exists(VAULTS_DIR):
-        vaults = os.listdir(VAULTS_DIR)
-        for vault in vaults:
-            vault_path = os.path.join(VAULTS_DIR, vault)
-            shutil.rmtree(vault_path)
-    if os.path.exists(USER_DATA_FILE):
-        os.remove(USER_DATA_FILE)
-    if os.path.exists(ENC_USER_DATA_FILE):
-        os.remove(ENC_USER_DATA_FILE)
-    if os.path.exists(VAULT_METADATA_FILE):
-        os.remove(VAULT_METADATA_FILE)
-    if os.path.exists(ENC_VAULT_METADATA_FILE):
-        os.remove(ENC_VAULT_METADATA_FILE)
-    if os.path.exists(PASS_METADATA_FILE):
-        os.remove(PASS_METADATA_FILE)
-    
-    if not os.path.exists(USER_DATA_FILE) and not os.path.exists(ENC_USER_DATA_FILE) and not os.path.exists(VAULT_METADATA_FILE) and not os.path.exists(ENC_VAULT_METADATA_FILE) and not os.listdir(VAULTS_DIR) and not os.path.exists(PASS_METADATA_FILE):
-        print("User deleted successfuly!")
-        print("Good Bye!")
+    username = session["authenticated_user"]
+    if not username: return
+    load_user_context(username)
+    if os.path.exists(USER_DIR):
+        try:
+            shutil.rmtree(USER_DIR)
+            if not os.path.exists(USER_DIR):
+                print("User and all associated vaults deleted successfully!")
+                print("Good Bye!")
+                session["authenticated_user"] = None
+            else:
+                print("Something went wrong. Please be sure to close all files and try again.")
+                return
+        except Exception as e:
+            print(f"[ERROR] Cannot delete user: {e}")
     else:
-        print("Something went wrong. Please be sure to close all files and try again.")
-        return
+        print("User not found.")
 
 # Vault Management
 def create_vault(vault_name, password): 
@@ -1060,110 +1075,151 @@ def audit_password_manager(passMngr_pass):
     else:
         print("All password look strong")
 
-# First menu loop
-def first_menu():
-    while True:
-        print("\nSirius Vault")
-        print("\n1. Create User")
-        print("2. Connect external Vault.")
-        print("0. Exit")
-        choice = input("Choose an option: ")
-        if choice == "1":
-            print("Leave blank for default storage, or enter path.")
-            storage_path = input("Storage Path:").strip()
-            if storage_path:
-                print("\nDo you want to format this drive?")
-                print("This process deletes all the data on drive and name it 'SIRIUS_VAULT'.")
-                want_format = input("Format? (Y/N):").strip().lower()
-                if want_format in ["y", "yes"]:
-                    if format_drive_windows(storage_path):
-                        format_success = True
-                    else:
-                        print("Formatting failed.")
-                default = False
-                if not initialize_storage(storage_path, default):
-                    continue
-            else:
-                default = True
-                initialize_storage(None, default)
-            if os.path.exists(USER_DATA_FILE) or os.path.exists(ENC_USER_DATA_FILE):
-                print("\n[ERROR] There is a user data in this location!")
-                print("Please use '2. Connect external Vault' option.")
-                print("Process canceled to prevent data loss.")
-                continue
-            username = input("Username: ")
-            user_password = getpass("Password: ")
-            with open(USER_DATA_FILE, 'w') as f:
-                json.dump({}, f)
-            create_user(username, user_password)
-            encrypt_userdata_file(user_password)
-            main_menu()
-        elif choice == "2":
-            storage_path = input("Please enter storage path: ").strip()
-            if initialize_storage(storage_path, default=False):
-                if os.path.exists(ENC_USER_DATA_FILE):
-                    print("External storage found. Redirecting to login screen.")
-                    main_menu()
-                else:
-                    print("There is no user data on external storage please use option Create user and enter custom storage path.")
-        elif choice == "0":
-            print("Exiting the Sirius Vault.")
-            exit_program()
-        else:
-            print("\nInvalid choice, please try again.")
+# # First menu loop
+# def first_menu():
+#     while True:
+#         print("\nSirius Vault")
+#         print("\n1. Create User")
+#         print("2. Connect external Vault.")
+#         print("0. Exit")
+#         choice = input("Choose an option: ")
+#         if choice == "1":
+#             print("Leave blank for default storage, or enter path.")
+#             storage_path = input("Storage Path:").strip()
+#             if storage_path:
+#                 print("\nDo you want to format this drive?")
+#                 print("This process deletes all the data on drive and name it 'SIRIUS_VAULT'.")
+#                 want_format = input("Format? (Y/N):").strip().lower()
+#                 if want_format in ["y", "yes"]:
+#                     if format_drive_windows(storage_path):
+#                         format_success = True
+#                     else:
+#                         print("Formatting failed.")
+#                 default = False
+#                 if not initialize_storage(storage_path, default):
+#                     continue
+#             else:
+#                 default = True
+#                 initialize_storage(None, default)
+#             if os.path.exists(USER_DATA_FILE) or os.path.exists(ENC_USER_DATA_FILE):
+#                 print("\n[ERROR] There is a user data in this location!")
+#                 print("Please use '2. Connect external Vault' option.")
+#                 print("Process canceled to prevent data loss.")
+#                 continue
+#             username = input("Username: ")
+#             user_password = getpass("Password: ")
+#             with open(USER_DATA_FILE, 'w') as f:
+#                 json.dump({}, f)
+#             create_user(username, user_password)
+#             encrypt_userdata_file(user_password)
+#             main_menu()
+#         elif choice == "2":
+#             storage_path = input("Please enter storage path: ").strip()
+#             if initialize_storage(storage_path, default=False):
+#                 if os.path.exists(ENC_USER_DATA_FILE):
+#                     print("External storage found. Redirecting to login screen.")
+#                     main_menu()
+#                 else:
+#                     print("There is no user data on external storage please use option Create user and enter custom storage path.")
+#         elif choice == "0":
+#             print("Exiting the Sirius Vault.")
+#             exit_program()
+#         else:
+#             print("\nInvalid choice, please try again.")
 
-# Main menu loop
-def main_menu():
+# # Main menu loop
+# def main_menu():
+#     global STORAGE_ROOT
+#     while True:
+#         active_location = f"({STORAGE_ROOT})"
+#         print("\nSirius Vault")
+#         print(f"Target Path: {active_location}")
+#         print("\n1. Log in")
+#         print("2. Login with External Vault")
+#         print("0. Exit")
+#         choice = input("Choose an option: ")
+#         if choice == "1":
+#             username = input("Enter Username: ")
+#             user_password = getpass("Enter Password: ")
+#             try:
+#                 decrypt_userdata_file(user_password)
+#             except:
+#                 print("Wrong credentials.")
+#                 continue
+#             if authenticate_user(username, user_password):
+#                 encrypt_userdata_file(user_password)
+#                 authenticate_menu(username, user_password)
+#             else:
+#                 encrypt_userdata_file(user_password)
+#         elif choice == "2":
+#             storage_path = input("Please enter external storage path: ").strip()
+#             if initialize_storage(storage_path, default=False):
+#                 if os.path.exists(ENC_USER_DATA_FILE):
+#                     print(f"\n[SUCCESS] Target Vault changed.")
+#                     print("You can login now.")
+#                     username = input("Enter Username: ")
+#                     user_password = getpass("Enter Password: ")
+#                     try:
+#                         decrypt_userdata_file(user_password)
+#                     except:
+#                         print("Wrong credentials.")
+#                         continue
+#                     if authenticate_user(username, user_password):
+#                         encrypt_userdata_file(user_password)
+#                         authenticate_menu(username, user_password)
+#                     else:
+#                         encrypt_userdata_file(user_password)
+#                 else:
+#                     print("\n[ERROR] There is no user data on given path.")
+#                     print("Returning to default path...")
+#                     initialize_storage(default=True)
+#             else:
+#                 print("Invalid path.")
+#         elif choice == "0":
+#             exit_program()
+#         else:
+#             print("Invalid choice, please try again.")
+
+# start_screen
+def start_screen():
     global STORAGE_ROOT
     while True:
-        active_location = f"({STORAGE_ROOT})"
-        print("\nSirius Vault")
-        print(f"Target Path: {active_location}")
-        print("\n1. Log in")
-        print("2. Login with External Vault")
+        location_display = STORAGE_ROOT if STORAGE_ROOT else "Not Set"
+        print("\nSIRIUS VAULT")
+        print(f"Storage Location: {location_display}")
+        print("1. Login")
+        print("2. Register")
+        print("3. Change Storage Location")
         print("0. Exit")
-        choice = input("Choose an option: ")
+        choice = input("Choose an option: ").strip()
         if choice == "1":
-            username = input("Enter Username: ")
-            user_password = getpass("Enter Password: ")
+            username = input("Username: ")
+            user_password = getpass("Password: ")
             try:
-                decrypt_userdata_file(user_password)
-            except:
-                print("Wrong credentials.")
-                continue
-            if authenticate_user(username, user_password):
-                encrypt_userdata_file(user_password)
-                authenticate_menu(username, user_password)
-            else:
-                encrypt_userdata_file(user_password)
-        elif choice == "2":
-            storage_path = input("Please enter external storage path: ").strip()
-            if initialize_storage(storage_path, default=False):
-                if os.path.exists(ENC_USER_DATA_FILE):
-                    print(f"\n[SUCCESS] Target Vault changed.")
-                    print("You can login now.")
-                    username = input("Enter Username: ")
-                    user_password = getpass("Enter Password: ")
-                    try:
-                        decrypt_userdata_file(user_password)
-                    except:
-                        print("Wrong credentials.")
-                        continue
-                    if authenticate_user(username, user_password):
-                        encrypt_userdata_file(user_password)
-                        authenticate_menu(username, user_password)
-                    else:
-                        encrypt_userdata_file(user_password)
+                if authenticate_user(username, user_password):
+                    authenticate_menu(username, user_password)
                 else:
-                    print("\n[ERROR] There is no user data on given path.")
-                    print("Returning to default path...")
-                    initialize_storage(default=True)
+                    print("Login failed.")
+            except Exception as e:
+                print(f"Error: {e}")
+        elif choice == "2":
+            print("\nCreate New User")
+            username = input("Username: ")
+            user_password = getpass("Password: ")
+            create_user(username, user_password)
+        elif choice == "3":
+            print("\nCurrent Storage: ", STORAGE_ROOT)
+            new_path = input("Enter new storage path: ").strip()
+            if os.path.exists(new_path):
+                initialize_storage(new_path, default=False)
+                print("Storage location updated.")
             else:
                 print("Invalid path.")
         elif choice == "0":
             exit_program()
         else:
             print("Invalid choice, please try again.")
+
 
 # Authenticate menu loops
 def authenticate_menu(username, user_password):
@@ -1239,11 +1295,12 @@ def authenticate_menu(username, user_password):
                 if authenticate_user(username, user_password):
                     decrypt_vaultdata_file(user_password)
                     delete_user()
-                    first_menu()
+                    start_screen()
                 else:
                     print("Wrong username or password")
         elif choice == "7":
             logout_user()
+            return
         elif choice == "0":
             exit_program()
         else:
@@ -1442,8 +1499,7 @@ if __name__ == "__main__":
         last_path = config["last_storage_root"]
     
         if os.path.exists(last_path):
-            print("Loading last configurations...")
-            print(f"Path: {last_path}")
+            print(f"[INFO] Storage loaded from config: {last_path}")
             if os.path.normpath(last_path) == os.path.normpath(default_root_path):
                 if initialize_storage(default=True):
                     loaded_from_config = True
@@ -1457,7 +1513,4 @@ if __name__ == "__main__":
     if not loaded_from_config:
         initialize_storage(default=True)
 
-    if os.path.exists(ENC_USER_DATA_FILE):
-        main_menu()
-    else:
-        first_menu()
+    start_screen()
