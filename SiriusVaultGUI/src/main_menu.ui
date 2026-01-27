@@ -194,14 +194,14 @@ QPushButton:checked {
     text-align: center;
     padding-left: 15px;
     border: 2px;
-    color: #a6adc8;
+    color: #dc573c;
     font-size: 11pt;
     background-color: #3d2034;
     border-radius: 5px;
 }
 
 QPushButton:hover {
-    background-color: #313244;
+    background-color: #dc573c;
     color: #ffffff;
 }
 
@@ -229,7 +229,7 @@ QPushButton:checked {
 }</string>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="page_vaults">
        <property name="styleSheet">
@@ -322,7 +322,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
         <item row="0" column="0">
          <widget class="QStackedWidget" name="stack_pass_manager">
           <property name="currentIndex">
-           <number>0</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="page_pm_auth">
            <layout class="QGridLayout" name="gridLayout_3">
@@ -422,6 +422,14 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
               <layout class="QVBoxLayout" name="verticalLayout_2">
                <item>
                 <widget class="QLabel" name="label_3">
+                 <property name="styleSheet">
+                  <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-weight: normal;
+    font-size: 10pt;
+    background-color: transparent;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Password Manager Password:</string>
                  </property>
@@ -429,6 +437,16 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QLineEdit" name="input_pm_auth_pass">
+                 <property name="styleSheet">
+                  <string notr="true">QLineEdit {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 5px;
+    font-size: 10pt;
+}</string>
+                 </property>
                  <property name="echoMode">
                   <enum>QLineEdit::Password</enum>
                  </property>
@@ -439,6 +457,22 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QPushButton" name="btn_pm_auth">
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #45475a;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Authenticate Password Manager</string>
                  </property>
@@ -564,6 +598,14 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
               <layout class="QVBoxLayout" name="verticalLayout_3">
                <item>
                 <widget class="QLabel" name="label_4">
+                 <property name="styleSheet">
+                  <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-weight: normal;
+    font-size: 10pt;
+    background-color: transparent;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Password Manager Password:</string>
                  </property>
@@ -571,13 +613,34 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QLineEdit" name="input_pm_reg_pass">
+                 <property name="styleSheet">
+                  <string notr="true">QLineEdit {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 5px;
+    font-size: 10pt;
+}</string>
+                 </property>
                  <property name="echoMode">
                   <enum>QLineEdit::Password</enum>
+                 </property>
+                 <property name="placeholderText">
+                  <string>Enter Password Manager Password</string>
                  </property>
                 </widget>
                </item>
                <item>
                 <widget class="QLabel" name="label_5">
+                 <property name="styleSheet">
+                  <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-weight: normal;
+    font-size: 10pt;
+    background-color: transparent;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Confirm Password Manager Password:</string>
                  </property>
@@ -585,13 +648,42 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QLineEdit" name="input_pm_reg_pass_confirm">
+                 <property name="styleSheet">
+                  <string notr="true">QLineEdit {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 5px;
+    font-size: 10pt;
+}</string>
+                 </property>
                  <property name="echoMode">
                   <enum>QLineEdit::Password</enum>
+                 </property>
+                 <property name="placeholderText">
+                  <string>Confirm Password Manager Password</string>
                  </property>
                 </widget>
                </item>
                <item>
                 <widget class="QPushButton" name="btn_pm_reg">
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #45475a;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Create Password Manager</string>
                  </property>
@@ -653,6 +745,22 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
               <layout class="QHBoxLayout" name="horizontalLayout_2">
                <item>
                 <widget class="QPushButton" name="btn_pm_add">
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #45475a;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Add Pasword</string>
                  </property>
@@ -660,6 +768,22 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QPushButton" name="btn_pm_audit">
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #45475a;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Audit Password</string>
                  </property>
@@ -667,6 +791,22 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QPushButton" name="btn_pm_gen">
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #45475a;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Generate Password</string>
                  </property>
@@ -687,6 +827,22 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                </item>
                <item>
                 <widget class="QPushButton" name="btn_pm_logout">
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #dc573c;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #dc573c;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+                 </property>
                  <property name="text">
                   <string>Logout Password Manager</string>
                  </property>
@@ -696,7 +852,82 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
              </widget>
             </item>
             <item>
-             <widget class="QTableWidget" name="table_pm_list"/>
+             <widget class="QTableWidget" name="table_pm_list">
+              <property name="styleSheet">
+               <string notr="true">QTableWidget {
+    background-color: #181825;
+    color: #cdd6f4;
+    gridline-color: #313244;
+    border: 1px solid #313244;
+    selection-background-color: #313244;
+    selection-color: #ffffff;
+}
+
+QHeaderView::section {
+    background-color: #1e1e2e;
+    color: #89b4fa;
+    padding: 6px;
+	border: 2px solid #89b4fa;
+    /*border-bottom: 2px solid #89b4fa;
+	border-right: 2px solid #89b4fa;
+	border-left: 2px solid #89b4fa; */
+    font-weight: bold;
+    font-family: &quot;Segoe UI&quot;;
+}
+
+QTableCornerButton::section {
+    background-color: #1e1e2e;
+    border: none;
+    border-bottom: 2px solid #89b4fa;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background: #181825;
+    width: 10px;
+    margin: 0px;
+}
+QScrollBar::handle:vertical {
+    background: #45475a;
+    min-height: 20px;
+    border-radius: 5px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    background: none;
+}</string>
+              </property>
+              <property name="editTriggers">
+               <set>QAbstractItemView::NoEditTriggers</set>
+              </property>
+              <property name="alternatingRowColors">
+               <bool>true</bool>
+              </property>
+              <property name="selectionMode">
+               <enum>QAbstractItemView::ExtendedSelection</enum>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+              <property name="showGrid">
+               <bool>false</bool>
+              </property>
+              <attribute name="horizontalHeaderStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderVisible">
+               <bool>false</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>Services</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Actions</string>
+               </property>
+              </column>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -712,7 +943,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 	layoutTopMargin = 20;
 }</string>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout_9">
+       <layout class="QVBoxLayout" name="verticalLayout_10">
         <item>
          <widget class="QLabel" name="label_6">
           <property name="minimumSize">
@@ -958,6 +1189,83 @@ QComboBox QAbstractItemView {
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="QFrame" name="frame_settings_dangerzone_2">
+          <property name="styleSheet">
+           <string notr="true">QFrame {
+    background-color: rgba(243, 139, 168, 0.05);
+    border: 2px solid #f38ba8;
+    border-radius: 8px;
+}</string>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_9">
+           <item>
+            <widget class="QLabel" name="label_dangerZone_main_2">
+             <property name="styleSheet">
+              <string notr="true">QLabel {
+    color: #f38ba8;
+    font-weight: bold;
+    font-size: 17pt;
+    background-color: transparent;
+}</string>
+             </property>
+             <property name="text">
+              <string>Permanently Delete Password Manager</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_dangerZone_sub_2">
+             <property name="styleSheet">
+              <string notr="true">QLabel {
+    color: #bac2de;
+    font-style: italic;
+    font-size: 12pt;
+    background-color: transparent;
+}</string>
+             </property>
+             <property name="text">
+              <string>This action cannot be undone. All your passwords will be permanently lost.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btn_settings_dZ_deleteAC_2">
+             <property name="maximumSize">
+              <size>
+               <width>200</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton {
+    background-color: transparent;
+    color: #f38ba8;
+    border: 2px solid #f38ba8;
+    font-weight: bold;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+QPushButton:hover {
+    background-color: #f38ba8;
+    color: #1e1e2e;
+}</string>
+             </property>
+             <property name="text">
+              <string>DELETE Password Manager</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </item>
         <item>
          <widget class="QFrame" name="frame_settings_dangerzone">
