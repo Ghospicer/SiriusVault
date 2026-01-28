@@ -1194,7 +1194,13 @@ def start_screen():
         choice = input("Choose an option: ").strip()
         if choice == "1":
             username = input("Username: ")
+            if not username:
+                print("Error: No username.")
+                continue
             user_password = getpass("Password: ")
+            if not user_password:
+                print("Error: No user password.")
+                continue
             try:
                 if authenticate_user(username, user_password):
                     authenticate_menu(username, user_password)
@@ -1205,7 +1211,13 @@ def start_screen():
         elif choice == "2":
             print("\nCreate New User")
             username = input("Username: ")
+            if not username:
+                print("Error: No username.")
+                continue
             user_password = getpass("Password: ")
+            if not user_password:
+                print("Error: No user password.")
+                continue
             create_user(username, user_password)
         elif choice == "3":
             print("\nCurrent Storage: ", STORAGE_ROOT)
@@ -1239,7 +1251,13 @@ def authenticate_menu(username, user_password):
         choice = input("Choose an option: ")
         if choice == "1":
             vault_name = input("Enter vault name: ")
+            if not vault_name:
+                print("Error: No vault name.")
+                continue
             vault_password = getpass("Enter vault password: ")
+            if not vault_password:
+                print("Error: No vault password.")
+                continue
             if os.path.exists(ENC_VAULT_METADATA_FILE):
                 decrypt_vaultdata_file(user_password)
             create_vault(vault_name, vault_password)
@@ -1249,7 +1267,13 @@ def authenticate_menu(username, user_password):
                 print("You should create a vault first.")
                 continue
             vault_name = input("Enter vault name: ")
+            if not vault_name:
+                print("Error: No vault name.")
+                continue
             vault_password = getpass("Enter vault password: ")
+            if not vault_password:
+                print("Error: No vault password.")
+                continue
             decrypt_vaultdata_file(user_password)
             vault_key = authenticate_vault(vault_name, vault_password)
             encrypt_vaultdata_file(user_password)
@@ -1258,6 +1282,9 @@ def authenticate_menu(username, user_password):
                 vault_menu(vault_name, vault_password, username, user_password)
         elif choice == "3":
             passMngr_pass = getpass("Enter Password Manager Password: ")
+            if not passMngr_pass:
+                print("Error: No Password Manager Password.")
+                continue
             if not os.path.exists(ENC_PASS_METADATA_FILE):
                 create_passMngr(passMngr_pass)
                 encrypt_passdata_file(passMngr_pass)
@@ -1275,7 +1302,13 @@ def authenticate_menu(username, user_password):
             list_vaults(username)
             encrypt_vaultdata_file(user_password)
             vault_name = input("Enter vault name you want to delete: ")
+            if not vault_name:
+                print("Error: No vault name.")
+                continue
             vault_password = getpass("Enter vault password: ")
+            if not vault_password:
+                print("Error: No vault password.")
+                continue
             decrypt_vaultdata_file(user_password)
             vault_key = authenticate_vault(vault_name, vault_password)
             encrypt_vaultdata_file(user_password)
@@ -1290,7 +1323,13 @@ def authenticate_menu(username, user_password):
             consent_confirm = input("Do you wish to continue?(Y/N)")
             if consent_confirm.lower() in ["y", "yes"]:
                 username = input("Enter username: ")
+                if not username:
+                    print("Error: No username.")
+                    continue
                 user_password = getpass("Enter password: ")
+                if not user_password:
+                    print("Error: No user password.")
+                    continue
                 decrypt_userdata_file(user_password)
                 if authenticate_user(username, user_password):
                     decrypt_vaultdata_file(user_password)
@@ -1322,7 +1361,13 @@ def passwordManager_menu(passMngr_pass, user_password):
         choice = input("Choose an option: ")
         if choice == "1":
             service_name = input("Enter Service Name: ")
+            if not service_name:
+                print("Error: No service name.")
+                continue
             service_pass = getpass("Enter Service Password: ")
+            if not service_pass:
+                print("Error: No service password.")
+                continue
             decrypt_passdata_file(passMngr_pass)
             add_password_to_PassMngr(service_name, service_pass)
             encrypt_passdata_file(passMngr_pass)
@@ -1335,7 +1380,13 @@ def passwordManager_menu(passMngr_pass, user_password):
             list_services_in_passMngr()
             encrypt_passdata_file(passMngr_pass)
             service_name = input("Enter Service name: ")
+            if not service_name:
+                print("Error: No service name.")
+                continue
             pMngr_password = getpass("Enter Password Manager Password: ")
+            if not pMngr_password:
+                print("Error: No Password Manager password.")
+                continue
             decrypt_passdata_file(passMngr_pass)
             if authenticate_passMngr(pMngr_password):
                 extract_password_service(service_name, pMngr_password)
@@ -1347,11 +1398,20 @@ def passwordManager_menu(passMngr_pass, user_password):
             list_services_in_passMngr()
             encrypt_passdata_file(passMngr_pass)
             pMngr_password = getpass("Enter Password Manager Password: ")
+            if not pMngr_password:
+                print("Error: No Password Manager password.")
+                continue
             decrypt_passdata_file(passMngr_pass)
             if authenticate_passMngr(pMngr_password):
                 encrypt_passdata_file(passMngr_pass)
                 service_name = input("Enter Service name: ")
+                if not service_name:
+                    print("Error: No service name.")
+                    continue
                 new_password = input("Enter new Password for Service: ")
+                if not new_password:
+                    print("Error: No new password.")
+                    continue
                 decrypt_passdata_file(passMngr_pass)
                 remove_password_service(service_name, pMngr_password)
                 add_password_to_PassMngr(service_name, new_password)
@@ -1364,7 +1424,13 @@ def passwordManager_menu(passMngr_pass, user_password):
             list_services_in_passMngr()
             encrypt_passdata_file(passMngr_pass)
             service_name = input("Enter service name: ")
+            if not service_name:
+                print("Error: No service name.")
+                continue
             pMngr_password = getpass("Enter Password Manager Password: ")
+            if not pMngr_password:
+                print("Error: No Password Manager password.")
+                continue
             decrypt_passdata_file(passMngr_pass)
             if authenticate_passMngr(pMngr_password):
                 remove_password_service(service_name, pMngr_password)
@@ -1423,6 +1489,9 @@ def vault_menu(vault_name, vault_password, username, user_password):
                 for filename in files:
                     print(filename)
                 file_name = input("Enter file name: ")
+                if not file_name:
+                    print("Error: No filename.")
+                    continue 
                 file_remove = input("Do you want to remove file after adding it to vault?(Y/N)")
                 filepath = os.path.join(FILE_IN, f"{file_name}")
                 decrypt_vaultdata_file(user_password)
@@ -1438,7 +1507,13 @@ def vault_menu(vault_name, vault_password, username, user_password):
             encrypt_vaultdata_file(user_password)
         elif choice == "3":
             file_name = input("Enter file name to remove: ")
+            if not file_name:
+                print("Error: No filename.")
+                continue
             vault_password = getpass("Enter vault password: ")
+            if not vault_password:
+                print("Error: No vault password.")
+                continue
             decrypt_vaultdata_file(user_password)
             vault_key = authenticate_vault(vault_name, vault_password)
             encrypt_vaultdata_file(user_password)
@@ -1458,6 +1533,9 @@ def vault_menu(vault_name, vault_password, username, user_password):
                 list_files_in_vault(vault_name, username)
                 encrypt_vaultdata_file(user_password)
                 file_name = input("Enter file name to extract: ")
+                if not file_name:
+                    print("Error: No filename.")
+                    continue
                 destination_path = FILE_OUT
                 file_remove = input("Do you want to remove file from the vault after extraction?(Y/N)")
                 decrypt_vaultdata_file(user_password)
@@ -1474,6 +1552,9 @@ def vault_menu(vault_name, vault_password, username, user_password):
             list_files_in_vault(vault_name, username)
             encrypt_vaultdata_file(user_password)
             file_name = input("File name you want to view:")
+            if not file_name:
+                print("Error: No filename.")
+                continue
             vault_password = getpass("Enter vault password: ")
             decrypt_vaultdata_file(user_password)
             vault_key = authenticate_vault(vault_name, vault_password)
