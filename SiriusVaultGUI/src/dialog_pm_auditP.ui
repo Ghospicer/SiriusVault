@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>200</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Audit Password</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../../SiriusVault/src/ico/siriusvault.ico</normaloff>../../SiriusVault/src/ico/siriusvault.ico</iconset>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QDialog {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+    font-family: &quot;Segoe UI&quot;;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>55</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-size: 14pt;
+    font-weight: bold;
+}</string>
+     </property>
+     <property name="text">
+      <string>Audit Password</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_3">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>60</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QLabel {
+    color: #a6adc8;
+    font-size: 10pt;
+    font: italic;
+}</string>
+     </property>
+     <property name="text">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Info: This tool is for manual testing. Your saved passwords are automatically audited and shown in the 'Strength' column of your password list.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="textFormat">
+      <enum>Qt::AutoText</enum>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="styleSheet">
+        <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-size: 10pt;
+    font-weight: bold;
+}</string>
+       </property>
+       <property name="text">
+        <string>Password:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="input_dialog_check_strength">
+       <property name="styleSheet">
+        <string notr="true">QLineEdit {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 8px;
+    font-size: 10pt;
+}
+
+QLineEdit:focus {
+    border: 1px solid #89b4fa;
+}</string>
+       </property>
+       <property name="echoMode">
+        <enum>QLineEdit::Password</enum>
+       </property>
+       <property name="placeholderText">
+        <string>Enter password you want to audit</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QProgressBar" name="bar_strength_score">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>9</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QProgressBar {
+    border: none;
+    background-color: #313244;
+    border-radius: 2px;
+    height: 9px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #f38ba8;
+    border-radius: 2px;
+}</string>
+     </property>
+     <property name="value">
+      <number>0</number>
+     </property>
+     <property name="textVisible">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lbl_audit_message">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>15</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QLabel {
+    color: #a6adc8;
+    font-size: 10pt;
+}</string>
+     </property>
+     <property name="text">
+      <string>Enter a password to see strength.</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
