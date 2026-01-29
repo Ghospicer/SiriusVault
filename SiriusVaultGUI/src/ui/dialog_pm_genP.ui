@@ -11,11 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Authenticate Vault</string>
+   <string>Generate Password</string>
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../../SiriusVault/src/ico/siriusvault.ico</normaloff>../../SiriusVault/src/ico/siriusvault.ico</iconset>
+    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">QDialog {
@@ -27,6 +27,12 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>55</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -35,7 +41,7 @@
 }</string>
      </property>
      <property name="text">
-      <string>Login Vault</string>
+      <string>Generate Password</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -54,12 +60,12 @@
 }</string>
        </property>
        <property name="text">
-        <string>Vault Password:</string>
+        <string>Generated Password:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="input_dialog_vLogin_vpassword">
+      <widget class="QLineEdit" name="output_dialog_genP_generatedP">
        <property name="styleSheet">
         <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -77,8 +83,11 @@ QLineEdit:focus {
        <property name="echoMode">
         <enum>QLineEdit::Password</enum>
        </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
        <property name="placeholderText">
-        <string>Enter Vault Password</string>
+        <string/>
        </property>
       </widget>
      </item>
@@ -87,7 +96,7 @@ QLineEdit:focus {
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QPushButton" name="btn_dialog_vLogin_auth">
+      <widget class="QPushButton" name="btn_dialog_genP_reveal">
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -107,7 +116,32 @@ QPushButton:pressed {
 }</string>
        </property>
        <property name="text">
-        <string>Authenticate</string>
+        <string>Reveal</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_dialog_genP_copy">
+       <property name="styleSheet">
+        <string notr="true">QPushButton {
+    background-color: #89b4fa;
+    color: #1e1e2e;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #b4befe;
+}
+
+QPushButton:pressed {
+    background-color: #74c7ec;
+}</string>
+       </property>
+       <property name="text">
+        <string>Copy</string>
        </property>
       </widget>
      </item>
@@ -125,7 +159,7 @@ QPushButton:pressed {
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="btn_dialog_vLogin_cancel">
+      <widget class="QPushButton" name="btn_dialog_genP_close">
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #313244;
@@ -141,7 +175,7 @@ QPushButton:hover {
 }</string>
        </property>
        <property name="text">
-        <string>Cancel</string>
+        <string>Close</string>
        </property>
       </widget>
      </item>

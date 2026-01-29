@@ -18,7 +18,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../../../../../../SiriusVault/src/ico/siriusvault.ico</normaloff>../../../../../../SiriusVault/src/ico/siriusvault.ico</iconset>
+    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
   </property>
   <property name="autoFillBackground">
    <bool>false</bool>

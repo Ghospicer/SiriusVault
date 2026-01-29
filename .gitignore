@@ -4,11 +4,10 @@ SiriusVault/file out/
 SiriusVault/SiriusData/
 SiriusVault/src/
 SiriusVault/temp/
-SiriusVault/Vaults
 # Local folders GUI version
 SiriusVaultGUI/file in/
 SiriusVaultGUI/file out/
-SiriusVaultGUI/Vaults
+SiriusVaultGUI/SiriusData/
 
 # Python compile files
 __pycache__
