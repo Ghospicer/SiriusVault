@@ -7,8 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>350</height>
+    <height>300</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>284</height>
+   </size>
   </property>
   <property name="maximumSize">
    <size>
@@ -72,7 +78,6 @@
     color: #a6adc8;
     padding: 8px;
     font-size: 10pt;
-    margin-bottom: 10px;
 }
 
 QLineEdit:focus {
@@ -108,7 +113,6 @@ QLineEdit:focus {
     color: #a6adc8;
     padding: 8px;
     font-size: 10pt;
-    margin-bottom: 10px;
 }
 
 QLineEdit:focus {
@@ -147,7 +151,6 @@ QLineEdit:focus {
     color: #a6adc8;
     padding: 8px;
     font-size: 10pt;
-    margin-bottom: 10px;
 }
 
 QLineEdit:focus {
@@ -165,7 +168,7 @@ QLineEdit:focus {
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="btn_dialog_vCreate_create">
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -203,7 +206,7 @@ QPushButton:pressed {
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
+      <widget class="QPushButton" name="btn_dialog_vCreate_cancel">
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #313244;

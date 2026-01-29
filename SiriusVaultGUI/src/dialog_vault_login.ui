@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Generate Password</string>
+   <string>Authenticate Vault</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -27,12 +27,6 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>55</height>
-      </size>
-     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -41,7 +35,7 @@
 }</string>
      </property>
      <property name="text">
-      <string>Generate Password</string>
+      <string>Login Vault</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -60,12 +54,12 @@
 }</string>
        </property>
        <property name="text">
-        <string>Generated Password:</string>
+        <string>Vault Password:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="output_dialog_genP_generatedP">
+      <widget class="QLineEdit" name="input_dialog_vLogin_vpassword">
        <property name="styleSheet">
         <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -83,11 +77,8 @@ QLineEdit:focus {
        <property name="echoMode">
         <enum>QLineEdit::Password</enum>
        </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
        <property name="placeholderText">
-        <string/>
+        <string>Enter Vault Password</string>
        </property>
       </widget>
      </item>
@@ -96,7 +87,7 @@ QLineEdit:focus {
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QPushButton" name="btn_dialog_genP_reveal">
+      <widget class="QPushButton" name="btn_dialog_vLogin_auth">
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -116,32 +107,7 @@ QPushButton:pressed {
 }</string>
        </property>
        <property name="text">
-        <string>Reveal</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btn_dialog_genP_copy">
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-    background-color: #89b4fa;
-    color: #1e1e2e;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-weight: bold;
-}
-
-QPushButton:hover {
-    background-color: #b4befe;
-}
-
-QPushButton:pressed {
-    background-color: #74c7ec;
-}</string>
-       </property>
-       <property name="text">
-        <string>Copy</string>
+        <string>Authenticate</string>
        </property>
       </widget>
      </item>
@@ -159,7 +125,7 @@ QPushButton:pressed {
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="btn_dialog_genP_close">
+      <widget class="QPushButton" name="btn_dialog_vLogin_cancel">
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #313244;
@@ -175,7 +141,7 @@ QPushButton:hover {
 }</string>
        </property>
        <property name="text">
-        <string>Close</string>
+        <string>Cancel</string>
        </property>
       </widget>
      </item>

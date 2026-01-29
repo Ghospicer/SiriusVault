@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>200</height>
+    <height>150</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -60,23 +60,25 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QLabel" name="label_2">
-         <property name="styleSheet">
-          <string notr="true">QLabel {
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="styleSheet">
+            <string notr="true">QLabel {
     color: #cdd6f4;
     font-size: 10pt;
     font-weight: bold;
 }</string>
-         </property>
-         <property name="text">
-          <string>Master Password:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="input_dialog_reqP_masterP">
-         <property name="styleSheet">
-          <string notr="true">QLineEdit {
+           </property>
+           <property name="text">
+            <string>Master Password:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="input_dialog_reqP_masterP">
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
     background-color: #11111b;
     border: 1px solid #45475a;
     border-radius: 4px;
@@ -88,14 +90,16 @@
 QLineEdit:focus {
     border: 1px solid #89b4fa;
 }</string>
-         </property>
-         <property name="echoMode">
-          <enum>QLineEdit::Password</enum>
-         </property>
-         <property name="placeholderText">
-          <string>Enter Master Password</string>
-         </property>
-        </widget>
+           </property>
+           <property name="echoMode">
+            <enum>QLineEdit::Password</enum>
+           </property>
+           <property name="placeholderText">
+            <string>Enter Master Password</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -180,7 +184,7 @@ QPushButton:pressed {
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="lineEdit_2">
+          <widget class="QLineEdit" name="output_dialog_reqP_serviceP">
            <property name="styleSheet">
             <string notr="true">QLineEdit {
     background-color: #11111b;
