@@ -5,9 +5,8 @@ SiriusVault/SiriusData/
 SiriusVault/src/
 SiriusVault/temp/
 # Local folders GUI version
-SiriusVaultGUI/file in/
-SiriusVaultGUI/file out/
 SiriusVaultGUI/SiriusData/
+SiriusVault/temp/
 
 # Python compile files
 __pycache__

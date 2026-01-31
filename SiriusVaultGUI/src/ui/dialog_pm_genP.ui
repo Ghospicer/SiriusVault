@@ -7,8 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>150</height>
+    <height>160</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>160</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Generate Password</string>
@@ -27,10 +33,16 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
+     </property>
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>55</height>
+       <height>40</height>
       </size>
      </property>
      <property name="styleSheet">
@@ -52,6 +64,18 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label_3">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QLabel {
     color: #cdd6f4;
@@ -66,6 +90,18 @@
      </item>
      <item>
       <widget class="QLineEdit" name="output_dialog_genP_generatedP">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -79,6 +115,9 @@
 QLineEdit:focus {
     border: 1px solid #89b4fa;
 }</string>
+       </property>
+       <property name="text">
+        <string/>
        </property>
        <property name="echoMode">
         <enum>QLineEdit::Password</enum>
@@ -97,6 +136,18 @@ QLineEdit:focus {
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QPushButton" name="btn_dialog_genP_reveal">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -122,6 +173,18 @@ QPushButton:pressed {
      </item>
      <item>
       <widget class="QPushButton" name="btn_dialog_genP_copy">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -160,6 +223,18 @@ QPushButton:pressed {
      </item>
      <item>
       <widget class="QPushButton" name="btn_dialog_genP_close">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #313244;

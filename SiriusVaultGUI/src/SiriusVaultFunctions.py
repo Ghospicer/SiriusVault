@@ -34,16 +34,8 @@ ENC_PASS_METADATA_FILE = None
 # LOCAL PATHS
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMP_DIR = os.path.join(BASE_DIR, "..", "temp")
-FILE_IN = os.path.join(BASE_DIR, "..", "file in")
-FILE_OUT = os.path.join(BASE_DIR, "..", "file out")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 SESSION_TIMEOUT = 300  # 5 minutes
-
-# Initialize storage files if they do not exist
-if not os.path.exists(FILE_IN):
-    os.makedirs(FILE_IN)
-if not os.path.exists(FILE_OUT):
-    os.makedirs(FILE_OUT)
 
 # Session Management
 session = {
@@ -376,7 +368,7 @@ def decrypt_passdata_file(password):
         dec_file.write(decrypted_data)
     return decrypted_path
 
-# Multimedia Manager (TESTING)
+# Multimedia Manager (Terminal version. Not for GUI)
 def multimedia_manager(vault_name, vault_key, file_name):
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
@@ -769,7 +761,7 @@ def create_passMngr(passMngr_pass, pass_Mngr=None):
     return True
 
 
-# Authenticate Password Manager
+# Authenticate Password Manager //Maybe add username as arg?
 def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
     if not is_session_active():
         return False
@@ -832,8 +824,9 @@ def extract_password_service(service_name, pass_Mngr=None):
         print("Service not found! Check the list and try again.")
         return
     service_pass = next((services["service_pass"] for services in pass_Mngrs[pass_Mngr]["services"] if services["service_name"] == service_name), None)
-    print(f"Password for service: {service_name}")
-    print(f"{service_pass}")
+    # print(f"Password for service: {service_name}")
+    # print(f"{service_pass}")
+    return service_pass
 
 
 # Remove Password for service
@@ -862,8 +855,7 @@ def delete_passMngr(username, user_password):
 
     if not os.path.exists(PASS_METADATA_FILE) and not os.path.exists(ENC_PASS_METADATA_FILE):
         print("Password Manager deleted successfuly!")
-        ##authenticate_menu_1(username, user_password)
-        ##Change this code with return to dashboard screen
+        return True
     else:
         print("Something went wrong. Please be sure to close all files and try again.")
-        return
+        return False

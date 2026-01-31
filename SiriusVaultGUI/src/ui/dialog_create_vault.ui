@@ -12,8 +12,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>0</width>
-    <height>284</height>
+    <width>400</width>
+    <height>300</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -39,6 +39,18 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>40</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -56,6 +68,18 @@
    </item>
    <item>
     <widget class="QLabel" name="label_2">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>20</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -70,6 +94,18 @@
    </item>
    <item>
     <widget class="QLineEdit" name="input_dialog_vname">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>35</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>35</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -91,6 +127,18 @@ QLineEdit:focus {
    </item>
    <item>
     <widget class="QLabel" name="label_3">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>20</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -105,6 +153,18 @@ QLineEdit:focus {
    </item>
    <item>
     <widget class="QLineEdit" name="input_dialog_vpassword">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>35</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>35</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -129,6 +189,18 @@ QLineEdit:focus {
    </item>
    <item>
     <widget class="QLabel" name="label_4">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>20</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -143,6 +215,18 @@ QLineEdit:focus {
    </item>
    <item>
     <widget class="QLineEdit" name="input_dialog_vcpassword">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>35</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>35</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -169,6 +253,18 @@ QLineEdit:focus {
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="btn_dialog_vCreate_create">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -207,6 +303,18 @@ QPushButton:pressed {
      </item>
      <item>
       <widget class="QPushButton" name="btn_dialog_vCreate_cancel">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>35</height>
+        </size>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
     background-color: #313244;

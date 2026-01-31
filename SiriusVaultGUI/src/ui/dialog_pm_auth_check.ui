@@ -7,8 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>150</height>
+    <height>170</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>170</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Reveal Service Password</string>
@@ -27,6 +33,18 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="lbl_service_title">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>40</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
     color: #cdd6f4;
@@ -63,6 +81,18 @@
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <widget class="QLabel" name="label_2">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QLabel {
     color: #cdd6f4;
@@ -77,6 +107,18 @@
          </item>
          <item>
           <widget class="QLineEdit" name="input_dialog_reqP_masterP">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -118,6 +160,18 @@ QLineEdit:focus {
          </item>
          <item>
           <widget class="QPushButton" name="btn_dialog_reqP_auth">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -171,6 +225,18 @@ QPushButton:pressed {
         <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
           <widget class="QLabel" name="label">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QLabel {
     color: #cdd6f4;
@@ -185,6 +251,18 @@ QPushButton:pressed {
          </item>
          <item>
           <widget class="QLineEdit" name="output_dialog_reqP_serviceP">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QLineEdit {
     background-color: #11111b;
@@ -213,6 +291,18 @@ QLineEdit:focus {
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
           <widget class="QPushButton" name="btn_dialog_reqP_reveal">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -238,6 +328,18 @@ QPushButton:pressed {
          </item>
          <item>
           <widget class="QPushButton" name="btn_dialog_reqP_copy">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -276,6 +378,18 @@ QPushButton:pressed {
          </item>
          <item>
           <widget class="QPushButton" name="btn_dialog_reqP_close">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
     background-color: #313244;
