@@ -653,6 +653,17 @@ def add_file_to_vault(vault_name, vault_key, filepath, username):
         json.dump(vaults, f)
     #print(f"File '{os.path.basename(filepath)}' added to vault {vault_name}!")
 
+def add_folder_recursive(vault_name, vault_key, folder_path, username):
+    
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                add_file_to_vault(vault_name, vault_key, file_path, username)
+                print(f"[INFO] Processed: {file}")
+            except Exception as e:
+                print(f"[ERROR] Could not process {file}: {e}")
+
 # List files in vault
 def list_files_in_vault_GUI(vault_name, username):
     if not is_session_active():

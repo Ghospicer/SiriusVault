@@ -468,7 +468,29 @@ class VaultMenuWindow(QtWidgets.QWidget):
         self.table_files.setAcceptDrops(True)
         
         self.btn_vaultmenu_back.clicked.connect(self.go_back_to_main)
-        self.btn_vaultmenu_add.clicked.connect(self.import_file_dialog)
+
+        self.import_menu = QtWidgets.QMenu()
+        self.import_menu.setStyleSheet("""
+            QMenu {
+                background-color: #313244;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+            }
+            QMenu::item {
+                padding: 5px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #585b70;
+            }
+        """)
+
+        action_file = self.import_menu.addAction("📄  Import Files...")
+        action_folder = self.import_menu.addAction("📁  Import Folder...")
+
+        action_file.triggered.connect(self.import_file_dialog)
+        action_folder.triggered.connect(self.import_folder_dialog)
+
+        self.btn_vaultmenu_add.setMenu(self.import_menu)
 
         self.table_files.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.load_files()
@@ -532,6 +554,23 @@ class VaultMenuWindow(QtWidgets.QWidget):
             self.process_file_import(f)
         self.load_files()
 
+    def import_folder_dialog(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder to Encrypt")
+        if folder_path:
+            QMessageBox.information(self, "Processing", "Encrypting folder contents... This may take a moment.")
+            QApplication.processEvents()
+            
+            try:
+                backend.decrypt_vaultdata_file(self.user_password)
+                count = backend.add_folder_recursive(self.vault_name, self.vault_key, folder_path, self.current_user)
+                QMessageBox.information(self, "Success", f"{count} files encrypted successfully.")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+            finally:
+                backend.encrypt_vaultdata_file(self.user_password)
+            
+            self.load_files()
+
     def process_file_import(self, filepath):
         try:
             backend.decrypt_vaultdata_file(self.user_password)
@@ -566,10 +605,26 @@ class VaultMenuWindow(QtWidgets.QWidget):
             event.ignore()
 
     def dropEvent(self, event):
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
-        for f in files:
-            if os.path.isfile(f):
-                self.process_file_import(f)
+        urls = event.mimeData().urls()
+        if not urls:
+            return
+        
+        QMessageBox.information(self, "Processing", "Encrypting dropped items...")
+        QApplication.processEvents()
+        
+        try:
+            backend.decrypt_vaultdata_file(self.user_password)
+            for u in urls:
+                local_path = u.toLocalFile()
+                if os.path.isdir(local_path):
+                    backend.add_folder_recursive(self.vault_name, self.vault_key, local_path, self.current_user)
+                elif os.path.isfile(local_path):
+                    backend.add_file_to_vault(self.vault_name, self.vault_key, local_path, self.current_user)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"An error occurred during import:\n{str(e)}")
+        finally:
+            backend.encrypt_vaultdata_file(self.user_password)
+        
         self.load_files()
 
 # =============================================================================

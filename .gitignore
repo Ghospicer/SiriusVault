@@ -8,6 +8,9 @@ SiriusVault/temp/
 SiriusVaultGUI/SiriusData/
 SiriusVault/temp/
 
+# Local Test Files
+TEST/
+
 # Python compile files
 __pycache__
 *.pyc
