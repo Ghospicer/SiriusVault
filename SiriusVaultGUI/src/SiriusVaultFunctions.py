@@ -24,6 +24,7 @@ STORAGE_ROOT = None
 VAULTS_DIR = None
 DATA_FOLDER = None
 USER_DIR = None
+RECOVERY_DIR = None
 USER_DATA_FILE = None
 ENC_USER_DATA_FILE = None
 VAULT_METADATA_FILE = None
@@ -214,14 +215,16 @@ def initialize_storage(target_path=None, default=True):
 
 def load_user_context(username):
     
-    global USER_DIR, VAULTS_DIR, USER_DATA_FILE, ENC_USER_DATA_FILE, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE
+    global USER_DIR, VAULTS_DIR, RECOVERY_DIR, USER_DATA_FILE, ENC_USER_DATA_FILE, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE
 
     user_hash = hashlib.sha256(username.encode('utf-8')).hexdigest()
-
+    backup_name = username + "backup"
+    backup_hash = hashlib.sha256(backup_name)
     USER_DIR = os.path.join(DATA_FOLDER, user_hash)
 
     VAULTS_DIR = os.path.join(USER_DIR, "Vaults")
 
+    RECOVERY_DIR = os.path.join(USER_DIR, f"{backup_hash}")
     USER_DATA_FILE = os.path.join(USER_DIR, "user.json")
     ENC_USER_DATA_FILE = os.path.join(USER_DIR, "user.json.enc")
     VAULT_METADATA_FILE = os.path.join(USER_DIR, "vault_metadata.json")
@@ -279,7 +282,7 @@ def encrypt_userdata_file(password):
     else:
         return
     return encrypted_path
-
+    
 # In use
 def encrypt_vaultdata_file(password):
     if not os.path.exists(VAULT_METADATA_FILE):
@@ -367,6 +370,67 @@ def decrypt_passdata_file(password):
     with open(decrypted_path, 'wb') as dec_file:
         dec_file.write(decrypted_data)
     return decrypted_path
+
+# Recovery (Testing)
+def generate_recovery_codes(count=6):
+    codes = []
+    for _ in range(count):
+        part1 = secrets.token_hex(2).upper()
+        part2 = secrets.token_hex(2).upper()
+        part3 = secrets.token_hex(2).upper()
+        codes.append(f"{part1}-{part2}-{part3}")
+    return codes
+
+def setup_recovery_codes(username, user_password):
+    if not is_session_active(): 
+        return None
+    load_user_context(username)
+    if os.path.exists(RECOVERY_DIR):
+        shutil.rmtree(RECOVERY_DIR)
+    os.makedirs(RECOVERY_DIR)
+    codes = generate_recovery_codes()
+
+    for i, code in enumerate(codes):
+        try:
+            rec_key, _ = generate_key(code, salt=code.encode())
+            fernet = Fernet(rec_key)
+            encrypted_pass = fernet.encrypt(user_password.encode())
+            dat_name = f"recovery_{i}"
+            dat_hash = hashlib.sha256(dat_name.encode()).hexdigest()
+            file_path = os.path.join(RECOVERY_DIR, f"{dat_hash}.dat")
+
+            with open(file_path, 'wb') as f:
+                f.write(encrypted_pass)
+        except Exception as e:
+            print(f"[ERROR] Could not create recovery slot {i}: {e}")
+            return None
+    return codes
+
+def recover_account_with_code(username, recovery_code):
+    load_user_context(username)
+
+    if not os.path.exists(RECOVERY_DIR):
+        return None
+    
+    recovery_code = recovery_code.strip().upper()
+
+    try:
+        rec_key, _ = generate_key(recovery_code, salt=recovery_code.encode())
+        fernet = Fernet(rec_key)
+    except:
+        return None
+    
+    for filename in os.listdir(RECOVERY_DIR):
+        file_path = os.path.join(RECOVERY_DIR, filename)
+
+        try:
+            with open(file_path, 'rb') as f:
+                encrypted_data = f.read()
+            decryprted_pass = fernet.decrypt(encrypted_data).decode()
+            return decryprted_pass
+        except Exception:
+            continue
+    return None
 
 # Multimedia Manager (Terminal version. Not for GUI)
 def multimedia_manager(vault_name, vault_key, file_name):

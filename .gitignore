@@ -33,3 +33,10 @@ venv/
 env/
 .venv/
 .env
+
+# README
+readme.md
+
+# Work in progress
+wip.txt
+

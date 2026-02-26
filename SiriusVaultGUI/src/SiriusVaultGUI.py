@@ -67,6 +67,8 @@ class LoginWindow(QtWidgets.QMainWindow):
         setup_password_toggle(self.input_user_password_reg)
         setup_password_toggle(self.input_confirm_user_password_reg)
 
+        self.lbl_forgot_pass.linkActivated.connect(self.open_recovery_dialog)
+
         # --- Button Connections ---
         self.btn_login.clicked.connect(self.handle_login)
         self.btn_register_log.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
@@ -81,6 +83,12 @@ class LoginWindow(QtWidgets.QMainWindow):
 
         # Default storage paht start
         backend.initialize_storage(default=True)
+
+    def open_recovery_dialog(self):
+        dialog = RecoveryDialog(self)
+        if dialog.exec():
+            if dialog.recovered_password:
+                self.stackedWidget.setCurrentIndex(0)
 
     def select_external_storage_login(self):
         path = QFileDialog.getExistingDirectory(self, "Select External Drive (USB/HDD)")
@@ -140,8 +148,17 @@ class LoginWindow(QtWidgets.QMainWindow):
             return
 
         if backend.create_user(user, pwd):
-            QMessageBox.information(self, "Success", "Account created! You can now login.")
-            self.stackedWidget.setCurrentIndex(0) 
+            codes = backend.setup_recovery_codes(user, pwd)
+            msg_text = "Account created!"
+            if codes:
+                code_str = "\n".join(codes)
+                msg_text += "IMPORTANT: SAVE THESE RECOVERY CODES!\n"
+                msg_text += "If you lose your password, these are the ONLY way to recover your account.\n\n"
+                msg_text += code_str
+                QMessageBox.information(self, "Success", msg_text)
+            else:
+                QMessageBox.warning(self, "Warning", "Account created but recovery codes could not be generated.")        
+            self.stackedWidget.setCurrentIndex(0)
         else:
             QMessageBox.warning(self, "Error", "User already exists.")
 
@@ -185,7 +202,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         self.btn_settings_dZ_deleteAC.clicked.connect(self.delete_account_logic)
         self.btn_settings_dZ_deleteAC_2.clicked.connect(self.delete_pm_logic)
         if hasattr(backend, 'STORAGE_ROOT'):
-             self.label_cur_storage_path.setText(f"Path: {backend.STORAGE_ROOT}")
+             self.lineEdit_cur_storage_path.setPlaceholderText(backend.STORAGE_ROOT)
 
         # --- Table Config ---
         # Select Rows
@@ -832,3 +849,57 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
             self.output_dialog_genP_generatedP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Normal)
         else:
             self.output_dialog_genP_generatedP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
+
+class RecoveryDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        uic.loadUi(get_ui_path("dialog_recovery.ui"), self)
+        
+        self.setWindowTitle("Account Recovery")
+        
+        self.stackedWidget.setCurrentIndex(0)
+
+        setup_password_toggle(self.output_recovered_pass)
+        
+        # Btn Page 0
+        self.btn_rec_recover.clicked.connect(self.process_recovery)
+        self.btn_rec_cancel.clicked.connect(self.reject)
+            
+        # Btn - Page 1
+        self.btn_dialog_rec_copy.clicked.connect(self.copy_to_clipboard)
+        self.btn_rec_to_login.clicked.connect(self.accept)
+        self.btn_dialog_rec_close.clicked.connect(self.accept) 
+
+        self.recovered_password = None 
+        self.recovered_username = None
+
+    def process_recovery(self):
+        user = self.input_rec_username.text().strip()
+        code = self.input_rec_code.text().strip()
+        
+        if not user or not code:
+            QMessageBox.warning(self, "Error", "Please fill in all fields.")
+            return
+
+        # Backend'den şifreyi kurtarmayı dene
+        # UI donmasın diye processEvents ekleyebilirsin
+        QApplication.processEvents()
+        
+        recovered_pass = backend.recover_account_with_code(user, code)
+        
+        if recovered_pass:
+            self.recovered_password = recovered_pass
+            self.recovered_username = user
+            
+            self.output_recovered_pass.setText(recovered_pass)
+            
+            self.stackedWidget.setCurrentIndex(1)
+            
+        else:
+            QMessageBox.critical(self, "Failed", "Invalid Username or Recovery Code.\nPlease check your inputs.")
+
+    def copy_to_clipboard(self):
+        QApplication.clipboard().setText(self.output_recovered_pass.text())
+        original_text = self.btn_dialog_rec_copy.text()
+        self.btn_dialog_rec_copy.setText("Copied!")
+        QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_rec_copy.setText(original_text))

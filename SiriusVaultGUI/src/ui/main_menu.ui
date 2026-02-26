@@ -259,7 +259,7 @@ QPushButton:checked {
 }</string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="page_vaults">
        <property name="styleSheet">
@@ -1102,7 +1102,7 @@ QGroupBox::title {
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="lineEdit">
+              <widget class="QLineEdit" name="lineEdit_cur_storage_path">
                <property name="minimumSize">
                 <size>
                  <width>0</width>
