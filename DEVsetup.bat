@@ -68,7 +68,7 @@ echo python main.py >> start_app.bat
 echo exit >> start_app.bat
 
 echo ===================================================
-echo SETUP COMPLETE! 🎉
+echo SETUP COMPLETE!
 echo You can now double-click 'start_app.bat' to run Sirius Vault.
 echo ===================================================
 pause
