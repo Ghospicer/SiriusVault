@@ -61,14 +61,16 @@ pip install -r requirements.txt
 echo.
 
 :: 4. Creating Shortcut for easy launch
-echo [4/4] Creating 'start_app.bat' for easy launch...
-echo @echo off > start_app.bat
-echo call venv\Scripts\activate.bat >> start_app.bat
-echo python SiriusVaultGUI\src\main.py >> start_app.bat
-echo exit >> start_app.bat
+echo [4/4] Creating 'SiriusVault.bat' for easy launch...
+echo @echo off > SiriusVault.bat
+echo title SiriusVaultGUI QS > SiriusVault.bat
+echo color 0A > SiriusVault.bat
+echo call venv\Scripts\activate.bat >> SiriusVault.bat
+echo python SiriusVaultGUI\src\main.py >> SiriusVault.bat
+echo exit >> SiriusVault.bat
 
 echo ===================================================
 echo SETUP COMPLETE!
-echo You can now double-click 'start_app.bat' to run Sirius Vault.
+echo You can now double-click 'SiriusVault.bat' to run Sirius Vault.
 echo ===================================================
 pause
