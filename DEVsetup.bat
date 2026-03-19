@@ -64,7 +64,6 @@ echo.
 echo [4/4] Creating 'SiriusVault.bat' for easy launch...
 echo @echo off > SiriusVault.bat
 echo title SiriusVaultGUI QS > SiriusVault.bat
-echo color 0A > SiriusVault.bat
 echo call venv\Scripts\activate.bat >> SiriusVault.bat
 echo python SiriusVaultGUI\src\main.py >> SiriusVault.bat
 echo exit >> SiriusVault.bat
