@@ -64,7 +64,7 @@ echo.
 echo [4/4] Creating 'start_app.bat' for easy launch...
 echo @echo off > start_app.bat
 echo call venv\Scripts\activate.bat >> start_app.bat
-echo python main.py >> start_app.bat
+echo python SiriusVaultGUI\src\main.py >> start_app.bat
 echo exit >> start_app.bat
 
 echo ===================================================
