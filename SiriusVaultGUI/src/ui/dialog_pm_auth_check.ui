@@ -56,7 +56,7 @@
       <string>Requested Service: [Service Name]</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -134,7 +134,7 @@ QLineEdit:focus {
 }</string>
            </property>
            <property name="echoMode">
-            <enum>QLineEdit::Password</enum>
+            <enum>QLineEdit::EchoMode::Password</enum>
            </property>
            <property name="placeholderText">
             <string>Enter Master Password</string>
@@ -148,7 +148,7 @@ QLineEdit:focus {
          <item>
           <spacer name="horizontalSpacer_3">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -171,6 +171,9 @@ QLineEdit:focus {
              <width>16777215</width>
              <height>35</height>
             </size>
+           </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
            </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
@@ -198,7 +201,7 @@ QPushButton:pressed {
          <item>
           <spacer name="horizontalSpacer_2">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -278,7 +281,7 @@ QLineEdit:focus {
 }</string>
            </property>
            <property name="echoMode">
-            <enum>QLineEdit::Password</enum>
+            <enum>QLineEdit::EchoMode::Password</enum>
            </property>
            <property name="readOnly">
             <bool>true</bool>
@@ -302,6 +305,9 @@ QLineEdit:focus {
              <width>16777215</width>
              <height>35</height>
             </size>
+           </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
            </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
@@ -340,6 +346,9 @@ QPushButton:pressed {
              <height>35</height>
             </size>
            </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {
     background-color: #89b4fa;
@@ -366,7 +375,7 @@ QPushButton:pressed {
          <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -389,6 +398,9 @@ QPushButton:pressed {
              <width>16777215</width>
              <height>35</height>
             </size>
+           </property>
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
            </property>
            <property name="styleSheet">
             <string notr="true">QPushButton {

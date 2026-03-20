@@ -62,7 +62,7 @@
       <string>Add New Password</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -167,7 +167,7 @@ QLineEdit:focus {
         <string/>
        </property>
        <property name="echoMode">
-        <enum>QLineEdit::Password</enum>
+        <enum>QLineEdit::EchoMode::Password</enum>
        </property>
        <property name="placeholderText">
         <string>Enter Service Password</string>
@@ -187,6 +187,9 @@ QLineEdit:focus {
          <width>16777215</width>
          <height>35</height>
         </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="toolTip">
         <string>Generate a random strong password.</string>
@@ -283,7 +286,7 @@ QLineEdit:focus {
       <string/>
      </property>
      <property name="echoMode">
-      <enum>QLineEdit::Password</enum>
+      <enum>QLineEdit::EchoMode::Password</enum>
      </property>
      <property name="placeholderText">
       <string>Confirm Service Password</string>
@@ -305,6 +308,9 @@ QLineEdit:focus {
          <width>16777215</width>
          <height>35</height>
         </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
@@ -332,7 +338,7 @@ QPushButton:pressed {
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -355,6 +361,9 @@ QPushButton:pressed {
          <width>16777215</width>
          <height>35</height>
         </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
