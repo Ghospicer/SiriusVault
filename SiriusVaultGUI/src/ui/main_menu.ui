@@ -289,7 +289,7 @@ QPushButton:checked {
          <widget class="QTableWidget" name="table_vaults">
           <property name="styleSheet">
            <string notr="true">QTableWidget {
-    background-color: #181825;
+    background-color: transparent;
     color: #cdd6f4;
     gridline-color: #313244;
     border: 1px solid #313244;

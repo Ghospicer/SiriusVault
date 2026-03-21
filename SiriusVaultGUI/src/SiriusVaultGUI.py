@@ -261,22 +261,37 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             for v_name in vaults:
                 row = self.table_vaults.rowCount()
                 self.table_vaults.insertRow(row)
-                self.table_vaults.setItem(row, 0, QTableWidgetItem(v_name))
+
+                vault_item = QTableWidgetItem(v_name)
+                vault_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                font = QFont("Yu Gothic UI Bold", 12)
+                vault_item.setFont(font)
+                self.table_vaults.setItem(row, 0, vault_item)
+
+                empty_item = QTableWidgetItem()
+                empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table_vaults.setItem(row, 1, empty_item)
+
+                self.table_vaults.setRowHeight(row, 50)
                 
                 action_widget = QWidget()
+                if row % 2 == 1:
+                    action_widget.setStyleSheet("background-color: #2a2b3d;")
+                else:
+                    action_widget.setStyleSheet("background-color: transparent;")
                 layout = QHBoxLayout(action_widget)
                 layout.setContentsMargins(0, 0, 0, 0)
-                layout.setSpacing(5)
+                layout.setSpacing(10)
 
                 btn_unlock = QPushButton("🔓")
                 btn_unlock.setToolTip("Open Vault")
-                btn_unlock.setFixedSize(30, 25)
+                btn_unlock.setFixedSize(35, 30)
                 btn_unlock.setStyleSheet("background-color: #a6e3a1; border: none; border-radius: 4px;")
                 btn_unlock.clicked.connect(lambda _, r=row: self.on_vault_double_click(r, 0))
 
                 btn_del = QPushButton("🗑️")
                 btn_del.setToolTip("Delete Vault")
-                btn_del.setFixedSize(30, 25)
+                btn_del.setFixedSize(35, 30)
                 btn_del.setStyleSheet("background-color: #f38ba8; border: none; border-radius: 4px;")
                 btn_del.clicked.connect(lambda _, v=v_name: self.delete_vault_click(v))
                 
