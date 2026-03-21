@@ -233,6 +233,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def verify_session(self):
         if backend.session.get("authenticated_user") is None:
             self.session_monitor.stop()
+            for widget in QApplication.topLevelWidgets():
+                if isinstance(widget, QtWidgets.QDialog):
+                    widget.reject()
+
             self.hide()
             
             if hasattr(self, 'vault_window') and self.vault_window.isVisible():
@@ -409,8 +413,6 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def open_pm_reveal_dialog(self, service_name):
         dialog = AuthCheckDialog(service_name, self.master_pm_password, self)
         if dialog.exec():
-            # AuthCheckDialog içinde zaten dec/enc yapıp şifreyi alıyoruz,
-            # burada tekrar backend çağırmaya gerek yok, dialog sonucu gösterecek.
             pass
 
     def open_pm_audit_dialog(self):
