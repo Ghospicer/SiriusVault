@@ -817,7 +817,7 @@ class AuthCheckDialog(QtWidgets.QDialog):
             self.output_dialog_reqP_serviceP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
     def copy_to_clip(self):
-        QApplication.clipboard().setText(self.output_dialog_reqP_serviceP)
+        QApplication.clipboard().setText(self.output_dialog_reqP_serviceP.text())
         original_text = self.btn_dialog_reqP_copy.text()
         self.btn_dialog_reqP_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_reqP_copy.setText(original_text))
@@ -872,7 +872,7 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
             self.output_dialog_genP_generatedP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
     def copy_to_clipboard(self):
-        QApplication.clipboard().setText(self.output_dialog_genP_generatedP)
+        QApplication.clipboard().setText(self.output_dialog_genP_generatedP.text())
         original_text = self.btn_dialog_genP_copy.text()
         self.btn_dialog_genP_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_genP_copy.setText(original_text))
