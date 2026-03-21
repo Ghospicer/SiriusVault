@@ -219,7 +219,7 @@ def load_user_context(username):
 
     user_hash = hashlib.sha256(username.encode('utf-8')).hexdigest()
     backup_name = username + "backup"
-    backup_hash = hashlib.sha256(backup_name)
+    backup_hash = hashlib.sha256(backup_name.encode('utf-8')).hexdigest()
     USER_DIR = os.path.join(DATA_FOLDER, user_hash)
 
     VAULTS_DIR = os.path.join(USER_DIR, "Vaults")
@@ -382,8 +382,7 @@ def generate_recovery_codes(count=6):
     return codes
 
 def setup_recovery_codes(username, user_password):
-    if not is_session_active(): 
-        return None
+    
     load_user_context(username)
     if os.path.exists(RECOVERY_DIR):
         shutil.rmtree(RECOVERY_DIR)
