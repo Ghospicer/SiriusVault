@@ -856,7 +856,7 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
     return False
 
 # Add Password to Password Manager
-def add_password_to_PassMngr(service_name, service_pass, pass_Mngr=None):
+def add_password_to_PassMngr(service_name, service_user_mail, service_pass, pass_Mngr=None):
     if not is_session_active():
         return
     reset_session_timer()
@@ -865,6 +865,7 @@ def add_password_to_PassMngr(service_name, service_pass, pass_Mngr=None):
         pass_Mngrs = json.load(f)
     service_metadata = {
         "service_name": service_name,
+        "service_user_mail": service_user_mail,
         "service_pass": service_pass
     }
     pass_Mngrs[pass_Mngr]["services"].append(service_metadata)

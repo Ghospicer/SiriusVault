@@ -222,9 +222,25 @@ class MainMenuWindow(QtWidgets.QMainWindow):
 
         self.show_my_vaults()
 
+        self.session_monitor = QtCore.QTimer(self)
+        self.session_monitor.timeout.connect(self.verify_session)
+        self.session_monitor.start(2000)
+
     def show_my_vaults(self):
         self.stackedWidget.setCurrentIndex(0)
-        self.load_vaults_table() 
+        self.load_vaults_table()
+
+    def verify_session(self):
+        if backend.session.get("authenticated_user") is None:
+            self.session_monitor.stop()
+            self.hide()
+            
+            if hasattr(self, 'vault_window') and self.vault_window.isVisible():
+                self.vault_window.close()
+            
+            QMessageBox.warning(self, "Session Expired", "Your session has expired due to inactivity.\nPlease log in again.")
+            
+            self.handle_logout()
 
     # --- VAULT LOGIC ---
     def load_vaults_table(self):
@@ -349,10 +365,11 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             self.table_pm_list.insertRow(row)
             
             s_name = s['service_name']
+            s_user_mail = s['service_user_mail']
             s_pass = s['service_pass'] 
 
             self.table_pm_list.setItem(row, 0, QTableWidgetItem(s_name))
-            self.table_pm_list.setItem(row, 1, QTableWidgetItem("-")) 
+            self.table_pm_list.setItem(row, 1, QTableWidgetItem(s_user_mail)) 
             
             strength_item = QTableWidgetItem("🟢" if len(s_pass) > 10 else "🔴")
             strength_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -740,6 +757,7 @@ class AddPasswordDialog(QtWidgets.QDialog):
 
     def save(self):
         s_name = self.input_service_name.text()
+        s_user_mail = self.input_service_user_mail.text()
         s_pass = self.input_service_pass.text()
         confirm = self.input_service_confirm_pass.text()
 
@@ -750,7 +768,7 @@ class AddPasswordDialog(QtWidgets.QDialog):
         # [DEC -> OP -> ENC]
         try:
             backend.decrypt_passdata_file(self.master_password)
-            backend.add_password_to_PassMngr(s_name, s_pass)
+            backend.add_password_to_PassMngr(s_name, s_user_mail, s_pass)
         finally:
             backend.encrypt_passdata_file(self.master_password)
         self.accept()
@@ -799,7 +817,10 @@ class AuthCheckDialog(QtWidgets.QDialog):
             self.output_dialog_reqP_serviceP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
     def copy_to_clip(self):
-        QApplication.clipboard().setText(self.output_dialog_reqP_serviceP.text())
+        QApplication.clipboard().setText(self.output_dialog_reqP_serviceP)
+        original_text = self.btn_dialog_reqP_copy.text()
+        self.btn_dialog_reqP_copy.setText("Copied!")
+        QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_reqP_copy.setText(original_text))
 
 class AuditPasswordDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -835,7 +856,7 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
         uic.loadUi(get_ui_path("dialog_pm_genP.ui"), self)
         self.generate()
         self.btn_dialog_genP_close.clicked.connect(self.accept)
-        self.btn_dialog_genP_copy.clicked.connect(lambda: QApplication.clipboard().setText(self.output_dialog_genP_generatedP.text()))
+        self.btn_dialog_genP_copy.clicked.connect(self.copy_to_clipboard)
         self.btn_dialog_genP_reveal.clicked.connect(self.toggle_reveal)
 
     def generate(self):
@@ -850,6 +871,12 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
         else:
             self.output_dialog_genP_generatedP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
+    def copy_to_clipboard(self):
+        QApplication.clipboard().setText(self.output_dialog_genP_generatedP)
+        original_text = self.btn_dialog_genP_copy.text()
+        self.btn_dialog_genP_copy.setText("Copied!")
+        QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_genP_copy.setText(original_text))
+        
 class RecoveryDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -859,6 +886,7 @@ class RecoveryDialog(QtWidgets.QDialog):
         
         self.stackedWidget.setCurrentIndex(0)
 
+        setup_password_toggle(self.input_rec_code)
         setup_password_toggle(self.output_recovered_pass)
         
         # Btn Page 0

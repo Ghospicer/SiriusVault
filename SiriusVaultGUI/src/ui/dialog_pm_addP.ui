@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>310</height>
+    <height>400</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>400</width>
-    <height>310</height>
+    <height>400</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -110,6 +110,41 @@ QLineEdit:focus {
      </property>
      <property name="placeholderText">
       <string>Enter Service Name</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_5">
+     <property name="styleSheet">
+      <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-size: 10pt;
+    font-weight: bold;
+}</string>
+     </property>
+     <property name="text">
+      <string>Username/E-mail:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="input_service_user_mail">
+     <property name="styleSheet">
+      <string notr="true">QLineEdit {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 8px;
+    font-size: 10pt;
+}
+
+QLineEdit:focus {
+    border: 1px solid #89b4fa;
+}</string>
+     </property>
+     <property name="placeholderText">
+      <string>Enter Username/E-mail</string>
      </property>
     </widget>
    </item>
