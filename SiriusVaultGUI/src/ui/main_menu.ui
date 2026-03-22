@@ -274,7 +274,7 @@ QPushButton:checked {
 }</string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="page_vaults">
        <property name="styleSheet">
@@ -376,7 +376,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
         <item row="0" column="0">
          <widget class="QStackedWidget" name="stack_pass_manager">
           <property name="currentIndex">
-           <number>0</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="page_pm_auth">
            <layout class="QGridLayout" name="gridLayout_3">
@@ -957,7 +957,8 @@ QPushButton:hover {
     color: #cdd6f4;
     gridline-color: #313244;
     border: 1px solid #313244;
-    selection-background-color: #313244;
+    alternate-background-color: #242536;
+    selection-background-color: #45475a;
     selection-color: #ffffff;
 }
 
@@ -1001,7 +1002,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                <bool>true</bool>
               </property>
               <property name="selectionMode">
-               <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
+               <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
               </property>
               <property name="selectionBehavior">
                <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>

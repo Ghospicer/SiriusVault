@@ -379,46 +379,69 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             
         if not services: return
 
+        font = QFont("Yu Gothic UI Bold", 12)
+
         for s in services:
             row = self.table_pm_list.rowCount()
             self.table_pm_list.insertRow(row)
             
             s_name = s['service_name']
             s_user_mail = s['service_user_mail']
-            s_pass = s['service_pass'] 
+            s_pass = s['service_pass']
 
-            self.table_pm_list.setItem(row, 0, QTableWidgetItem(s_name))
-            self.table_pm_list.setItem(row, 1, QTableWidgetItem(s_user_mail)) 
+            # Service Name
+            name_item = QTableWidgetItem(s_name)
+            name_item.setFont(font)
+            name_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table_pm_list.setItem(row, 0, name_item)
+
+            # Service Username/email
+            user_mail_item = QTableWidgetItem(s_user_mail)
+            user_mail_item.setFont(font)
+            user_mail_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            user_mail_item.setFlags(user_mail_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table_pm_list.setItem(row, 1, user_mail_item) 
             
+            # Password Strenght
             strength_item = QTableWidgetItem("🟢" if len(s_pass) > 10 else "🔴")
+            strength_item.setFont(font)
             strength_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            strength_item.setFlags(strength_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table_pm_list.setItem(row, 2, strength_item)
 
+            self.table_pm_list.setRowHeight(row, 50)
+
             action_widget = QWidget()
+
+            action_widget.setStyleSheet("background-color: transparent;")
+
             layout = QHBoxLayout(action_widget)
             layout.setContentsMargins(2, 2, 2, 2)
+            layout.setSpacing(10)
             
             btn_reveal = QPushButton("👁️")
             btn_reveal.setToolTip("Reveal")
-            btn_reveal.setFixedWidth(30)
+            btn_reveal.setFixedSize(35, 30)
             btn_reveal.setStyleSheet("background-color: #89b4fa; border: none; border-radius: 4px;")
             btn_reveal.clicked.connect(lambda _, n=s_name: self.open_pm_reveal_dialog(n))
             
             btn_copy = QPushButton("📋")
             btn_copy.setToolTip("Copy")
-            btn_copy.setFixedWidth(30)
+            btn_copy.setFixedSize(35, 30)
             btn_copy.setStyleSheet("background-color: #89b4fa; border: none; border-radius: 4px;")
             btn_copy.clicked.connect(lambda _, p=s_pass: QApplication.clipboard().setText(p))
 
             btn_delete = QPushButton("🗑️")
             btn_delete.setToolTip("Delete")
-            btn_delete.setFixedWidth(30)
+            btn_delete.setFixedSize(35, 30)
             btn_delete.setStyleSheet("background-color: #f38ba8; border: none; border-radius: 4px;")
             btn_delete.clicked.connect(lambda _, n=s_name: self.delete_pm_service(n))
 
             layout.addWidget(btn_reveal)
             layout.addWidget(btn_copy)
             layout.addWidget(btn_delete)
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table_pm_list.setCellWidget(row, 3, action_widget)
 
     def open_pm_add_dialog(self):
