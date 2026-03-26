@@ -65,6 +65,21 @@
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
         </property>
+        <property name="styleSheet">
+         <string notr="true">QPushButton {
+                background-color: #313244;
+                color: #cdd6f4;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 15px;
+                font-weight: bold;
+                font-size: 10pt;
+            }
+            QPushButton:hover {
+                background-color: #45475a;
+                color: #f38ba8; 
+            }</string>
+        </property>
         <property name="text">
          <string>Back</string>
         </property>
@@ -104,8 +119,14 @@
         </property>
         <property name="styleSheet">
          <string notr="true">QLabel {
-	border: 1px solid gray
+	/*border: 1px solid gray*/
 }</string>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::Shape::NoFrame</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Shadow::Plain</enum>
         </property>
         <property name="text">
          <string>[vault_name]</string>
@@ -144,6 +165,20 @@
         </property>
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QPushButton {
+                background-color: #89b4fa;
+                color: #1e1e2e;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 15px;
+                font-weight: bold;
+                font-size: 10pt;
+            }
+            QPushButton:hover {
+                background-color: #b4befe; 
+            }</string>
         </property>
         <property name="text">
          <string>Add</string>

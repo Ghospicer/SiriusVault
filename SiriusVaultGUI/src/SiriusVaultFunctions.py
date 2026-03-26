@@ -41,7 +41,8 @@ SESSION_TIMEOUT = 300  # 5 minutes
 # Session Management
 session = {
     "authenticated_user": None,
-    "session_expiry": None
+    "session_expiry": None,
+    "session_timeout_index": 1
 }
 session_timer = None
 
@@ -59,6 +60,27 @@ def is_session_active():
         return True
     logout_user()  # Logout if the session expired
     return False
+
+def update_user_timeout_setting(username, password, new_index):
+    
+    load_user_context(username)
+    if not os.path.exists(ENC_USER_DATA_FILE):
+        print("User data file not encrypted.")
+        return False
+    try:
+        decrypt_userdata_file(password)
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+        user_data["session_timeout_index"] = new_index
+        with open(USER_DATA_FILE, 'w') as f:
+            json.dump(user_data, f)
+        reset_session_timer()
+        encrypt_userdata_file(password)
+        return True
+    except Exception as e:
+        encrypt_userdata_file(password)
+        print(f"Session timeout setting not saved: {e}")
+        return False
 
 def logout_user():
     global session_timer
@@ -534,7 +556,10 @@ def create_user(username, password):
         os.makedirs(VAULTS_DIR)
     
     key, salt =generate_key(password)
-    user_data = {"username": username, "password_hash": key.hex(), "salt": salt.hex()}
+    user_data = {"username": username,
+                "password_hash": key.hex(),
+                "salt": salt.hex(),
+                "session_timeout_index": 1}
     with open(USER_DATA_FILE, 'w') as f:
         json.dump(user_data, f)
     encrypt_userdata_file(password)
@@ -558,6 +583,7 @@ def authenticate_user(username, password):
         if stored_password_hash == derived_key:
             print("User Authentication successful!")
             session["authenticated_user"] = username
+            session["session_timeout_index"] = user_data.get("session_timeout_index", 1)
             reset_session_timer()
             encrypt_userdata_file(password)
             return True

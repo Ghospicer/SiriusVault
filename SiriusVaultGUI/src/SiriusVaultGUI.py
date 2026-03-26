@@ -177,6 +177,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         
         self.user_password = user_password
         self.current_user = backend.session.get("authenticated_user")
+        self.saved_index = backend.session.get("session_timeout_index", 1)
         self.is_logging_out = False 
 
         setup_password_toggle(self.input_pm_auth_pass)
@@ -203,6 +204,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         self.btn_settings_dZ_deleteAC_2.clicked.connect(self.delete_pm_logic)
         if hasattr(backend, 'STORAGE_ROOT'):
              self.lineEdit_cur_storage_path.setPlaceholderText(backend.STORAGE_ROOT)
+        self.comboBox.setCurrentIndex(self.saved_index)
+        timeouts = {0: 60, 1: 300, 2: 600, 3: 1800}
+        backend.SESSION_TIMEOUT = timeouts.get(self.saved_index, 300)
+        self.comboBox.currentIndexChanged.connect(self.update_session_timeout)
 
         # --- Table Config ---
         # Select Rows
@@ -479,6 +484,25 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def show_settings(self):
         self.stackedWidget.setCurrentIndex(2)
 
+    def update_session_timeout(self, index):
+        timeouts = {
+            0: 60,     # 1 minute
+            1: 300,    # 5 minutes
+            2: 600,    # 10 minutes
+            3: 1800    # 30 minutes
+        }
+        
+        new_timeout = timeouts.get(index, 300)
+        
+        if hasattr(backend, 'SESSION_TIMEOUT'):
+            backend.SESSION_TIMEOUT = new_timeout
+            backend.session["session_timeout_index"] = index
+            print(f"[INFO] Session timeout changed to {new_timeout} seconds.")
+            backend.reset_session_timer()
+
+            backend.update_user_timeout_setting(self.current_user, self.user_password, index)
+            print("User timeout setting saved!")
+
     def delete_account_logic(self):
         confirm = QMessageBox.warning(self, "DANGER", "All data will be lost.\nProceed?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
@@ -500,6 +524,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             self.check_pm_status()
 
     def handle_logout(self):
+        self.session_monitor.stop()
         self.is_logging_out = True 
         self.close() 
 
@@ -570,13 +595,7 @@ class VaultMenuWindow(QtWidgets.QWidget):
         self.load_files()
 
     def go_back_to_main(self):
-        if os.path.exists(backend.VAULT_METADATA_FILE):
-            backend.encrypt_vaultdata_file(self.user_password)
-        self.close()
-        
-        if self.parent_menu:
-            self.parent_menu.show()
-            self.parent_menu.load_vaults_table() 
+        self.close() 
 
     def load_files(self):
         self.table_files.setRowCount(0)
@@ -700,6 +719,16 @@ class VaultMenuWindow(QtWidgets.QWidget):
             backend.encrypt_vaultdata_file(self.user_password)
         
         self.load_files()
+
+    def closeEvent(self, event):
+        if os.path.exists(backend.VAULT_METADATA_FILE):
+            backend.encrypt_vaultdata_file(self.user_password)
+
+        if self.parent_menu:
+            self.parent_menu.show()
+            self.parent_menu.load_vaults_table()
+        
+        event.accept()
 
 # =============================================================================
 # 4. DIALOG CLASSES
