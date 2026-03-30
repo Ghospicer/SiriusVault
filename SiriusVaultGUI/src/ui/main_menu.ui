@@ -376,7 +376,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
         <item row="0" column="0">
          <widget class="QStackedWidget" name="stack_pass_manager">
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="page_pm_auth">
            <layout class="QGridLayout" name="gridLayout_3">
@@ -535,6 +535,9 @@ QPushButton:hover {
                  </property>
                  <property name="text">
                   <string>Authenticate Password Manager</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -750,6 +753,9 @@ QPushButton:hover {
                  </property>
                  <property name="text">
                   <string>Create Password Manager</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>

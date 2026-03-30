@@ -204,6 +204,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         self.btn_settings_dZ_deleteAC_2.clicked.connect(self.delete_pm_logic)
         if hasattr(backend, 'STORAGE_ROOT'):
              self.lineEdit_cur_storage_path.setPlaceholderText(backend.STORAGE_ROOT)
+        
         self.comboBox.setCurrentIndex(self.saved_index)
         timeouts = {0: 60, 1: 300, 2: 600, 3: 1800}
         backend.SESSION_TIMEOUT = timeouts.get(self.saved_index, 300)
@@ -348,16 +349,18 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         # [DEC -> OP -> ENC]
         try:
             backend.decrypt_passdata_file(passMngr_pass)
-            auth_success = backend.authenticate_passMngr(passMngr_pass)
+            auth = backend.authenticate_passMngr(passMngr_pass)
         finally:
             if os.path.exists(backend.PASS_METADATA_FILE):
                 backend.encrypt_passdata_file(passMngr_pass)
 
-        if auth_success:
-            self.master_pm_password = passMngr_pass 
+        if auth:
+            self.master_pm_password = passMngr_pass
+            self.input_pm_auth_pass.clear() 
             self.stack_pass_manager.setCurrentIndex(2) 
             self.load_pm_table()
         else:
+            self.input_pm_auth_pass.clear()
             QMessageBox.warning(self, "Error", "Incorrect Password.")
 
     def handle_pm_register(self):
@@ -369,8 +372,12 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             
             self.master_pm_password = passMngr_pass
             QMessageBox.information(self, "Success", "Password Manager Created!")
+            self.input_pm_reg_pass.clear()
+            self.input_pm_reg_pass_confirm.clear()
             self.stack_pass_manager.setCurrentIndex(2) 
         else:
+            self.input_pm_reg_pass.clear()
+            self.input_pm_reg_pass_confirm.clear()
             QMessageBox.warning(self, "Error", "Passwords do not match.")
 
     def load_pm_table(self):
@@ -509,19 +516,23 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             try:
                 backend.decrypt_userdata_file(self.user_password)
                 backend.decrypt_vaultdata_file(self.user_password)
-                backend.delete_user()
+                backend.delete_user(self.current_user, self.user_password)
             except Exception as e:
                 print(f"Error during deletion: {e}")
             
+            self.session_monitor.stop()
             self.is_logging_out = True 
             self.close()
 
     def delete_pm_logic(self):
         confirm = QMessageBox.question(self, "Delete PM", "Delete Password Manager?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
-            backend.delete_passMngr(self.current_user, "dummy") 
-            QMessageBox.information(self, "Deleted", "Password Manager deleted.")
-            self.check_pm_status()
+            if backend.delete_passMngr(self.current_user, self.user_password):
+                QMessageBox.information(self, "Deleted", "Password Manager deleted.")
+                self.check_pm_status()
+            else:
+                QMessageBox.warning(self, "Warning!", "Password Manager not deleted.")
+                self.check_pm_status()
 
     def handle_logout(self):
         self.session_monitor.stop()
@@ -978,8 +989,6 @@ class RecoveryDialog(QtWidgets.QDialog):
             QMessageBox.warning(self, "Error", "Please fill in all fields.")
             return
 
-        # Backend'den şifreyi kurtarmayı dene
-        # UI donmasın diye processEvents ekleyebilirsin
         QApplication.processEvents()
         
         recovered_pass = backend.recover_account_with_code(user, code)
