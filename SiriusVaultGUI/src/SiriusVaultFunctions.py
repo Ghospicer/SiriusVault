@@ -209,7 +209,6 @@ def load_user_context(username):
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
-
     if salt is None:
         salt = os.urandom(16)
     raw_key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
@@ -239,109 +238,133 @@ def decrypt_file(vault_key, encrypted_filepath, filename, destination_path):
 # In use
 def encrypt_userdata_file(password):
     if not os.path.exists(USER_DATA_FILE):
-        return
+        return None
     data_salt = bytes.fromhex(USER_SYSTEM_SALT)
     data_key = password
-    jsonKey, _ = generate_key(data_key, data_salt)
-    fernet = Fernet(jsonKey)
-    with open(USER_DATA_FILE, 'rb') as file:
-        file_data = file.read()
-    encrypted_data = fernet.encrypt(file_data)
-    encrypted_path = ENC_USER_DATA_FILE
-    with open(encrypted_path, 'wb') as enc_file:
-        enc_file.write(encrypted_data)
-    if os.path.exists(USER_DATA_FILE):
-        os.remove(USER_DATA_FILE)
-    else:
-        return
+    try:
+        jsonKey, _ = generate_key(data_key, data_salt)
+        fernet = Fernet(jsonKey)
+        with open(USER_DATA_FILE, 'rb') as file:
+            file_data = file.read()
+        encrypted_data = fernet.encrypt(file_data)
+        encrypted_path = ENC_USER_DATA_FILE
+        with open(encrypted_path, 'wb') as enc_file:
+            enc_file.write(encrypted_data)
+        if os.path.exists(USER_DATA_FILE):
+            os.remove(USER_DATA_FILE)
+        else:
+            return None
+    except Exception as e:
+        print(f"[ERROR] Userdata ENC failed: {e}")
+        return None
     return encrypted_path
     
 # In use
 def encrypt_vaultdata_file(password):
     if not os.path.exists(VAULT_METADATA_FILE):
-        return
+        return None
     data_salt = bytes.fromhex(USER_SYSTEM_SALT)
     data_key = password
-    jsonKey, _ = generate_key(data_key, data_salt)
-    fernet = Fernet(jsonKey)
-    with open(VAULT_METADATA_FILE, 'rb') as file:
-        file_data = file.read()
-    encrypted_data = fernet.encrypt(file_data)
-    encrypted_path = ENC_VAULT_METADATA_FILE
-    with open(encrypted_path, 'wb') as enc_file:
-        enc_file.write(encrypted_data)
-    if os.path.exists(VAULT_METADATA_FILE):
-        os.remove(VAULT_METADATA_FILE)
-    else:
-        return
+    try:
+        jsonKey, _ = generate_key(data_key, data_salt)
+        fernet = Fernet(jsonKey)
+        with open(VAULT_METADATA_FILE, 'rb') as file:
+            file_data = file.read()
+        encrypted_data = fernet.encrypt(file_data)
+        encrypted_path = ENC_VAULT_METADATA_FILE
+        with open(encrypted_path, 'wb') as enc_file:
+            enc_file.write(encrypted_data)
+        if os.path.exists(VAULT_METADATA_FILE):
+            os.remove(VAULT_METADATA_FILE)
+        else:
+            return None
+    except Exception as e:
+        print(f"[ERROR] Vaultdata ENC failed: {e}")
+        return None
     return encrypted_path
 
 # In Use
 def encrypt_passdata_file(password):
     if not os.path.exists(PASS_METADATA_FILE):
-        return
+        return None
     data_salt = bytes.fromhex(USER_SYSTEM_SALT)
     data_key = password
-    jsonKey, _ = generate_key(data_key, data_salt)
-    fernet = Fernet(jsonKey)
-    with open(PASS_METADATA_FILE, 'rb') as file:
-        file_data = file.read()
-    encrypted_data = fernet.encrypt(file_data)
-    encrypted_path = ENC_PASS_METADATA_FILE
-    with open(encrypted_path, 'wb') as enc_file:
-        enc_file.write(encrypted_data)
-    if os.path.exists(PASS_METADATA_FILE):
-        os.remove(PASS_METADATA_FILE)
-    else:
-        return
+    try:
+        jsonKey, _ = generate_key(data_key, data_salt)
+        fernet = Fernet(jsonKey)
+        with open(PASS_METADATA_FILE, 'rb') as file:
+            file_data = file.read()
+        encrypted_data = fernet.encrypt(file_data)
+        encrypted_path = ENC_PASS_METADATA_FILE
+        with open(encrypted_path, 'wb') as enc_file:
+            enc_file.write(encrypted_data)
+        if os.path.exists(PASS_METADATA_FILE):
+            os.remove(PASS_METADATA_FILE)
+        else:
+            return None
+    except Exception as e:
+        print(f"[ERROR] Passdata ENC failed: {e}")
+        return None
     return encrypted_path
 
 # In use
 def decrypt_userdata_file(password):
     if not os.path.exists(ENC_USER_DATA_FILE):
-        return
+        return None
     decrypted_path = USER_DATA_FILE
     data_salt = bytes.fromhex(USER_SYSTEM_SALT)
     data_key = password
-    jsonKey, _ = generate_key(data_key, data_salt)
-    fernet = Fernet(jsonKey)
-    with open(ENC_USER_DATA_FILE, 'rb') as enc_file:
-        encrypted_data = enc_file.read()
-    decrypted_data = fernet.decrypt(encrypted_data)
-    with open(decrypted_path, 'wb') as dec_file:
-        dec_file.write(decrypted_data)
+    try:
+        jsonKey, _ = generate_key(data_key, data_salt)
+        fernet = Fernet(jsonKey)
+        with open(ENC_USER_DATA_FILE, 'rb') as enc_file:
+            encrypted_data = enc_file.read()
+        decrypted_data = fernet.decrypt(encrypted_data)
+        with open(decrypted_path, 'wb') as dec_file:
+            dec_file.write(decrypted_data)
+    except Exception as e:
+        print(f"[ERROR] Userdata DEC failed: {e}")
+        return None
     return decrypted_path
 
 # In use
 def decrypt_vaultdata_file(password):
     if not os.path.exists(ENC_VAULT_METADATA_FILE):
-        return
+        return None
     decrypted_path = VAULT_METADATA_FILE
     data_salt = bytes.fromhex(USER_SYSTEM_SALT)
     data_key = password
-    jsonKey, _ = generate_key(data_key, data_salt)
-    fernet = Fernet(jsonKey)
-    with open(ENC_VAULT_METADATA_FILE, 'rb') as enc_file:
-        encrypted_data = enc_file.read()
-    decrypted_data = fernet.decrypt(encrypted_data)
-    with open(decrypted_path, 'wb') as dec_file:
-        dec_file.write(decrypted_data)
+    try:
+        jsonKey, _ = generate_key(data_key, data_salt)
+        fernet = Fernet(jsonKey)
+        with open(ENC_VAULT_METADATA_FILE, 'rb') as enc_file:
+            encrypted_data = enc_file.read()
+        decrypted_data = fernet.decrypt(encrypted_data)
+        with open(decrypted_path, 'wb') as dec_file:
+            dec_file.write(decrypted_data)
+    except Exception as e:
+        print(f"[ERROR] Vaultdata DEC failed: {e}")
+        return None
     return decrypted_path
 
 # In Use
 def decrypt_passdata_file(password):
     if not os.path.exists(ENC_PASS_METADATA_FILE):
-        return
+        return None
     decrypted_path = PASS_METADATA_FILE
     data_salt = bytes.fromhex(USER_SYSTEM_SALT)
     data_key = password
-    jsonKey, _ = generate_key(data_key, data_salt)
-    fernet = Fernet(jsonKey)
-    with open(ENC_PASS_METADATA_FILE, 'rb') as enc_file:
-        encrypted_data = enc_file.read()
-    decrypted_data = fernet.decrypt(encrypted_data)
-    with open(decrypted_path, 'wb') as dec_file:
-        dec_file.write(decrypted_data)
+    try:
+        jsonKey, _ = generate_key(data_key, data_salt)
+        fernet = Fernet(jsonKey)
+        with open(ENC_PASS_METADATA_FILE, 'rb') as enc_file:
+            encrypted_data = enc_file.read()
+        decrypted_data = fernet.decrypt(encrypted_data)
+        with open(decrypted_path, 'wb') as dec_file:
+            dec_file.write(decrypted_data)
+    except Exception as e:
+        print(f"[ERROR] Passdata DEC failed: {e}")
+        return None
     return decrypted_path
 
 # Recovery (Testing)
