@@ -147,6 +147,10 @@ class LoginWindow(QtWidgets.QMainWindow):
             QMessageBox.warning(self, "Error", "Passwords do not match!")
             return
 
+        score, strength_msg = backend.audit_password_strenght(pwd)
+        if score <= 40:
+            QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
+            return
         if backend.create_user(user, pwd):
             codes = backend.setup_recovery_codes(user, pwd)
             msg_text = "Account created!"
@@ -368,6 +372,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         passMngr_pass = self.input_pm_reg_pass.text()
         confirm = self.input_pm_reg_pass_confirm.text()
         if passMngr_pass == confirm and passMngr_pass:
+            score, strength_msg = backend.audit_password_strenght(passMngr_pass)
+            if score <= 40:
+                QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
+                return
             backend.create_passMngr(passMngr_pass)
             backend.encrypt_passdata_file(passMngr_pass)
             
@@ -417,7 +425,17 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             self.table_pm_list.setItem(row, 1, user_mail_item) 
             
             # Password Strenght
-            strength_item = QTableWidgetItem("🟢" if len(s_pass) > 10 else "🔴")
+            score, strength_msg = backend.audit_password_strenght(s_pass)
+            
+            if strength_msg == "Strong":
+                indicator = "🟢"
+            elif strength_msg == "Moderate":
+                indicator = "🟡"
+            else:
+                indicator = "🔴"
+            
+            strength_item = QTableWidgetItem(indicator)
+            strength_item.setToolTip(f"Strength: {strength_msg}, Score: {score}")
             strength_item.setFont(font)
             strength_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             strength_item.setFlags(strength_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -799,6 +817,11 @@ class CreateVaultDialog(QtWidgets.QDialog):
             QMessageBox.warning(self, "Error", "Passwords do not match.")
             return
         
+        score, strength_msg = backend.audit_password_strenght(pwd)
+        if score <= 40:
+            QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
+            return
+
         # [DEC -> OP -> ENC]
         try:
             backend.decrypt_vaultdata_file(self.user_password)
@@ -943,18 +966,14 @@ class AuditPasswordDialog(QtWidgets.QDialog):
 
     def update_meter(self):
         text = self.input_dialog_check_strength.text()
-        length_score = len(text) * 4
-        complexity_score = 0
-        if any(c.isupper() for c in text): complexity_score += 15
-        if any(c.islower() for c in text): complexity_score += 10
-        if any(c.isdigit() for c in text): complexity_score += 15
-        if any(c in "!@#$%^&*" for c in text): complexity_score += 20
-        total = min(length_score + complexity_score, 100)
+        
+        total, msg = backend.audit_password_strenght(text)
         self.bar_strength_score.setValue(total)
         color = "#f38ba8" 
-        msg = "Weak"
-        if total > 40: color = "#fab387"; msg = "Moderate"
-        if total > 75: color = "#a6e3a1"; msg = "Strong"
+        if msg == "Moderate":
+            color = "#fab387"
+        elif msg == "Strong":
+            color = "#a6e3a1"
         self.bar_strength_score.setStyleSheet(f"""
             QProgressBar {{ border: none; background-color: #313244; border-radius: 2px; height: 9px; text-align: center; }}
             QProgressBar::chunk {{ background-color: {color}; border-radius: 2px; }}

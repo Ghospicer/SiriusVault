@@ -945,6 +945,27 @@ def list_services_in_passMngr(pass_Mngr=None):
     services = pass_Mngrs[pass_Mngr]["services"]
     return services
 
+# Audit Password Strenght
+def audit_password_strenght(password):
+    if not password:
+        return 0, "Weak"
+    
+    lenght_score = len(password) * 4
+    complexity_score = 0
+
+    if any(c.isupper() for c in password): complexity_score += 15
+    if any(c.islower() for c in password): complexity_score += 10
+    if any(c.isdigit() for c in password): complexity_score += 15
+    if any(not c.isalnum() and not c.isspace() for c in password): complexity_score += 20
+
+    total = min(lenght_score + complexity_score, 100)
+    if total > 75:
+        return total, "Strong"
+    elif total > 40:
+        return total, "Moderate"
+    else:
+        return total, "Weak"
+
 # Extract Password for service
 def extract_password_service(service_name, pass_Mngr=None):
     if not is_session_active():
