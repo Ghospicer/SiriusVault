@@ -202,9 +202,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         # --- Settings ---
         self.btn_settings_dZ_deleteAC.clicked.connect(self.delete_account_logic)
         self.btn_settings_dZ_deleteAC_2.clicked.connect(self.delete_pm_logic)
-        if hasattr(backend, 'STORAGE_ROOT'):
-             self.lineEdit_cur_storage_path.setPlaceholderText(backend.STORAGE_ROOT)
-        
+        if hasattr(backend, 'USER_DIR'):
+             self.lineEdit_cur_storage_path.setPlaceholderText(backend.USER_DIR)
+        self.btn_settings_sto_move.clicked.connect(self.move_storage_logic)
+        self.btn_settings_sto_change.hide() # Remove this btn from ui
         self.comboBox.setCurrentIndex(self.saved_index)
         timeouts = {0: 60, 1: 300, 2: 600, 3: 1800}
         backend.SESSION_TIMEOUT = timeouts.get(self.saved_index, 300)
@@ -490,6 +491,36 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     # --- SETTINGS & LOGOUT ---
     def show_settings(self):
         self.stackedWidget.setCurrentIndex(2)
+
+    def move_storage_logic(self):
+        new_path = QFileDialog.getExistingDirectory(self, "Select New Location to Move Your Data")
+        if not new_path:
+            return
+        
+        confirm = QMessageBox.warning(self, "Move Data", "Your data will be moved to the new location.\nYou will be logged out after this operation to secure your files.\nProceed?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+
+        if confirm == QMessageBox.StandardButton.Yes:
+            QMessageBox.information(self, "Processing", "Moving your data... Please wait.")
+            QApplication.processEvents()
+
+            if os.path.exists(backend.USER_DATA_FILE):
+                backend.encrypt_userdata_file(self.user_password)
+            if os.path.exists(backend.VAULT_METADATA_FILE):
+                backend.encrypt_vaultdata_file(self.user_password)
+            if hasattr(self, 'master_pm_password') and os.path.exists(backend.PASS_METADATA_FILE):
+                backend.encrypt_passdata_file(self.master_pm_password)
+
+            result = backend.move_user_data(self.current_user, new_path)
+
+            if result == "SUCCESS":
+                backend.initialize_storage(new_path, default=False)
+                backend.load_user_context(self.current_user)
+                self.lineEdit_cur_storage_path.setPlaceholderText(backend.USER_DIR)
+                QMessageBox.information(self, "Success", "Your data has been successfully moved!\nPlease select your new storage on the login screen next time.")
+            elif result == "EXISTS":
+                QMessageBox.warning(self, "Error", "Your user data already exists in the target location.")
+            else:
+                QMessageBox.critical(self, "Error", "An error occurred while moving your data.")
 
     def update_session_timeout(self, index):
         timeouts = {

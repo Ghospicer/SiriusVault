@@ -83,13 +83,37 @@ def update_user_timeout_setting(username, password, new_index):
         print(f"Session timeout setting not saved: {e}")
         return False
 
+def clean_memory():
+    global USER_DIR, VAULTS_DIR, RECOVERY_DIR
+    global USER_DATA_FILE, VAULT_METADATA_FILE, PASS_METADATA_FILE
+    global ENC_USER_DATA_FILE, ENC_VAULT_METADATA_FILE, ENC_PASS_METADATA_FILE
+    global USER_ENV, USER_SYSTEM_SALT
+
+    USER_DIR = None
+    VAULTS_DIR = None
+    RECOVERY_DIR = None
+    USER_DATA_FILE = None
+    VAULT_METADATA_FILE = None
+    PASS_METADATA_FILE = None
+    ENC_USER_DATA_FILE= None
+    ENC_VAULT_METADATA_FILE = None
+    ENC_PASS_METADATA_FILE = None
+    USER_ENV = None
+    USER_SYSTEM_SALT = None
+
+    if 'SYSTEM_SALT' in os.environ:
+        del os.environ['SYSTEM_SALT']
+    
+    print("[INFO] Global variables wiped from memory.")
+
 def logout_user():
     global session_timer
     if session_timer:
         session_timer.cancel()
     session["authenticated_user"] = None
     session["session_expiry"] = None
-    print("\nSession expired. Please authenticate again.")
+    clean_memory()
+    print("\nSession ended. Please authenticate again.")
     return True
 
 def exit_program():
@@ -108,16 +132,9 @@ def remove_readonly(USER_ENV):
     try: os.chmod(USER_ENV, stat.S_IWRITE)
     except: pass
 
-def initialize_user_system_salt():
-    load_dotenv(USER_ENV)
-    raw_env = os.getenv('SYSTEM_SALT')
-    salt_from_env = raw_env if raw_env and raw_env.strip() else None
-    final_salt = None
-    if salt_from_env:
-        final_salt = salt_from_env
-        return final_salt
-    else:
-        print("[WARNING] System cannot find the SALT.")
+def handle_remove_readonly(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 def create_user_system_salt():
     
@@ -130,6 +147,17 @@ def create_user_system_salt():
         print("User Salt created!")
     except Exception as e:
         print(f"User salt creation error: {e}")
+
+def initialize_user_system_salt():
+    load_dotenv(USER_ENV, override=True)
+    raw_env = os.getenv('SYSTEM_SALT')
+    salt_from_env = raw_env if raw_env and raw_env.strip() else None
+    final_salt = None
+    if salt_from_env:
+        final_salt = salt_from_env
+        return final_salt
+    else:
+        print("[WARNING] System cannot find the SALT.")
 
 # CONFIG FUNC (TEST)
 def load_config():
@@ -206,6 +234,33 @@ def load_user_context(username):
     ENC_PASS_METADATA_FILE = os.path.join(USER_DIR, "pass_metadata.json.enc")
 
     return USER_DIR
+
+def move_user_data(username, new_path):
+    global DATA_FOLDER, USER_DIR
+    user_hash = hashlib.sha256(username.encode('utf-8')).hexdigest()
+    current_user_dir = USER_DIR
+
+    target_storage_root = os.path.join(os.path.abspath(new_path), "SiriusVault")
+    target_data_folder = os.path.join(target_storage_root, "SiriusData")
+    target_user_dir = os.path.join(target_data_folder, user_hash)
+
+    if os.path.exists(target_user_dir):
+        return "EXISTS"
+    
+    try:
+        if not os.path.exists(target_data_folder):
+            os.makedirs(target_data_folder)
+        
+        shutil.copytree(current_user_dir, target_user_dir)
+
+        if os.path.exists(target_user_dir):
+            shutil.rmtree(current_user_dir, onerror=handle_remove_readonly)
+            return "SUCCESS"
+        else:
+            return "ERROR"
+    except Exception as e:
+        print(f"[ERROR] User data move failed: {e}")
+        return "ERROR"
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
