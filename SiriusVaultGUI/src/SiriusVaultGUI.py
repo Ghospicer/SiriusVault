@@ -351,18 +351,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def handle_pm_login(self):
         passMngr_pass = self.input_pm_auth_pass.text()
         
-        # [DEC -> OP -> ENC]
-        try:
-            backend.decrypt_passdata_file(passMngr_pass)
-            auth = backend.authenticate_passMngr(passMngr_pass)
-        finally:
-            if os.path.exists(backend.PASS_METADATA_FILE):
-                backend.encrypt_passdata_file(passMngr_pass)
-
-        if auth:
+        if backend.authenticate_passMngr(passMngr_pass):
             self.master_pm_password = passMngr_pass
-            self.input_pm_auth_pass.clear() 
-            self.stack_pass_manager.setCurrentIndex(2) 
+            self.input_pm_auth_pass.clear()
+            self.stack_pass_manager.setCurrentIndex(2)
             self.load_pm_table()
         else:
             self.input_pm_auth_pass.clear()
@@ -376,14 +368,12 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             if score <= 40:
                 QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
                 return
-            backend.create_passMngr(passMngr_pass)
-            backend.encrypt_passdata_file(passMngr_pass)
-            
-            self.master_pm_password = passMngr_pass
-            QMessageBox.information(self, "Success", "Password Manager Created!")
-            self.input_pm_reg_pass.clear()
-            self.input_pm_reg_pass_confirm.clear()
-            self.stack_pass_manager.setCurrentIndex(2) 
+            if backend.create_passMngr(passMngr_pass):
+                self.master_pm_password = passMngr_pass
+                QMessageBox.information(self, "Success", "Password Manager Created!")
+                self.input_pm_reg_pass.clear()
+                self.input_pm_reg_pass_confirm.clear()
+                self.stack_pass_manager.setCurrentIndex(2)
         else:
             self.input_pm_reg_pass.clear()
             self.input_pm_reg_pass_confirm.clear()
@@ -821,13 +811,8 @@ class CreateVaultDialog(QtWidgets.QDialog):
         if score <= 40:
             QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
             return
-
-        # [DEC -> OP -> ENC]
-        try:
-            backend.decrypt_vaultdata_file(self.user_password)
-            result = backend.create_vault(name, pwd)
-        finally:
-            backend.encrypt_vaultdata_file(self.user_password)
+        
+        result = backend.create_vault(name, pwd, self.user_password)
             
         if result == "SUCCESS":
             QMessageBox.information(self, "Success", f"Vault '{name}' created.")
@@ -853,13 +838,8 @@ class VaultLoginDialog(QtWidgets.QDialog):
 
     def attempt_login(self):
         pwd = self.input_dialog_vLogin_vpassword.text()
-        
-        # [DEC -> OP -> ENC]
-        try:
-            backend.decrypt_vaultdata_file(self.user_password)
-            key = backend.authenticate_vault(self.vault_name, pwd)
-        finally:
-            backend.encrypt_vaultdata_file(self.user_password)
+
+        key = backend.authenticate_vault(self.vault_name, pwd, self.user_password)
             
         if key:
             self.vault_key = key

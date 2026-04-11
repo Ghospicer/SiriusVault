@@ -734,14 +734,15 @@ def create_user(username, password):
     create_user_system_salt()
     USER_SYSTEM_SALT = initialize_user_system_salt()
 
-    key, salt =generate_key(password)
+    enc_key, _, _ = generate_key(password, USER_SYSTEM_SALT)
+    _, auth_hash, salt = generate_key(password)
     user_data = {"username": username,
-                "password_hash": key.hex(),
+                "password_hash": auth_hash.decode('utf-8'),
                 "salt": salt.hex(),
                 "session_timeout_index": 1}
     with open(USER_DATA_FILE, 'w') as f:
         json.dump(user_data, f)
-    encrypt_userdata_file(password)
+    encrypt_userdata_file(enc_key)
     print(f"User '{username}' registered successfully!")
     print("You can login now.")
     return True
@@ -760,12 +761,14 @@ def authenticate_user(username, password):
         print(f"[ERROR] No user system salt.")
         return False
     
-    enc_key, auth_hash, _ = generate_key(password, USER_SYSTEM_SALT)
+    enc_key, _, _ = generate_key(password, USER_SYSTEM_SALT)
 
     try:
         if decrypt_userdata_file(enc_key):
             with open(USER_DATA_FILE, 'r') as f:
                 user_data = json.load(f)
+            stored_salt = bytes.fromhex(user_data.get("salt"))
+            _, auth_hash, _ = generate_key(password, stored_salt)
             stored_password_hash = user_data.get("password_hash")
             
             if stored_password_hash == auth_hash.decode('utf-8'):
@@ -794,20 +797,25 @@ def authenticate_user(username, password):
                 return False
         return False
     except Exception as e:
-        encrypt_userdata_file(password)
-        print("Incorrect Username or Password!")
+        try: 
+            encrypt_userdata_file_legacy(password)
+            encrypt_userdata_file(enc_key)
+        except: pass
+        print(f"[ERROR] User authentication failed: {e}")
         return False
     
 # Migrate user
 def migrate_user_to_pqc(username, password):
     try:
         USER_SYSTEM_SALT = initialize_user_system_salt()
-        new_enc_key, new_auth_hash, _ = generate_key(password, USER_SYSTEM_SALT)
+        new_enc_key, _, _ = generate_key(password, USER_SYSTEM_SALT)
+        _, new_auth_hash, new_salt = generate_key(password)
 
         with open(USER_DATA_FILE, 'r') as f:
             user_data = json.load(f)
 
         user_data["password_hash"] = new_auth_hash.decode('utf-8')
+        user_data["salt"] = new_salt.hex()
 
         with open(USER_DATA_FILE, 'w') as f:
             json.dump(user_data, f)
@@ -843,51 +851,144 @@ def delete_user(username, user_password):
             print("User not found.")
 
 # Vault Management
-def create_vault(vault_name, password): 
+def create_vault(vault_name, password, user_password): 
     if not is_session_active():
         return
     username = session["authenticated_user"]
     reset_session_timer()
 
+    global USER_SYSTEM_SALT
+    if not USER_SYSTEM_SALT:
+        USER_SYSTEM_SALT = initialize_user_system_salt()
+
+    master_enc_key, _, _ = generate_key(user_password, USER_SYSTEM_SALT)
+
+    decrypt_vaultdata_file(master_enc_key)
+
     if not os.path.exists(VAULT_METADATA_FILE):
         with open(VAULT_METADATA_FILE, 'w') as f:
             json.dump({}, f)
-    key, salt = generate_key(password)
-    enc_vault_name = hashlib.sha256(key + vault_name.encode('utf-8')).hexdigest()
-    vault_path = os.path.join(VAULTS_DIR, enc_vault_name)
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    if vault_name in vaults:
-        return "SAME_NAME"
-    vaults[vault_name] = {"owner": username, "key": key.hex(), "salt": salt.hex(), "files": []}
-    with open(VAULT_METADATA_FILE, 'w') as f:
-        json.dump(vaults, f)
-    if not os.path.exists(vault_path): 
-        os.makedirs(vault_path)
-        return "SUCCESS"
-    else:
-        return "SAME_NAME"
+    try:
+        with open(VAULT_METADATA_FILE, 'r') as f:
+            vaults = json.load(f)
+
+        if vault_name in vaults:
+            return "SAME_NAME"
+    
+        enc_key, auth_hash, salt = generate_key(password)
+        enc_vault_name = hashlib.sha256(enc_key + vault_name.encode('utf-8')).hexdigest()
+        vault_path = os.path.join(VAULTS_DIR, enc_vault_name)
+        vaults[vault_name] = {"owner": username, "auth_hash": auth_hash.decode('utf-8'), "salt": salt.hex(), "files": []}
+    
+        with open(VAULT_METADATA_FILE, 'w') as f:
+            json.dump(vaults, f)
+    
+        if not os.path.exists(vault_path): 
+            os.makedirs(vault_path)
+            return "SUCCESS"
+        else:
+            return "SAME_NAME"
+    finally:
+        encrypt_vaultdata_file(master_enc_key)
 
 # Open the vault
-def authenticate_vault(vault_name, vault_password):
+def authenticate_vault(vault_name, vault_password, user_password):
     if not is_session_active():
         return None
     username = session["authenticated_user"]
     reset_session_timer()
 
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    if vault_name not in vaults or vaults[vault_name]["owner"] != username:
-        #print("Access denied!")
-        return None
-    stored_salt = bytes.fromhex(vaults[vault_name]["salt"])
-    stored_key = bytes.fromhex(vaults[vault_name]["key"])
-    key, salt = generate_key(vault_password, stored_salt)
-    if stored_key == key and salt.hex() == vaults[vault_name]["salt"]:
-        #print("Vault authentication successful!")
-        return key
-    #print("Incorrect password!")
+    global USER_SYSTEM_SALT
+    if not USER_SYSTEM_SALT:
+        USER_SYSTEM_SALT = initialize_user_system_salt()
+
+    master_enc_key, _, _ = generate_key(user_password, USER_SYSTEM_SALT)
+
+    if not decrypt_vaultdata_file(master_enc_key):
+        if not decrypt_vaultdata_file_legacy(user_password):
+            print("[ERROR] Wrong credentials!")
+            return None
+        
+    try:
+
+        with open(VAULT_METADATA_FILE, 'r') as f:
+            vaults = json.load(f)
+
+        if vault_name not in vaults or vaults[vault_name]["owner"] != username:
+            return None
+    
+        v_data = vaults[vault_name]
+        if "auth_hash" in v_data:
+            stored_salt = bytes.fromhex(v_data["salt"])
+            vault_enc_key, auth_hash, _ = generate_key(vault_password, stored_salt)
+            if v_data["auth_hash"] == auth_hash.decode('utf-8'):
+                return vault_enc_key
+            return None
+        elif "key" in v_data:
+            stored_salt = bytes.fromhex(v_data["salt"])
+            stored_key = bytes.fromhex(vaults[vault_name]["key"])
+            legacy_key, _ = generate_key_legacy(vault_password, stored_salt)
+            if stored_key == legacy_key:
+                print(f"[INFO] Legacy Vault '{vault_name}' detected. Upgrading to PQC...")
+                if migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
+                    return authenticate_vault(vault_name, vault_password)
+            return None
+    finally:
+        encrypt_vaultdata_file(master_enc_key)
     return None
+
+# Migrate
+def migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
+    try:
+        new_salt = os.urandom(16)
+        new_enc_key, new_auth_hash, _ = generate_key(vault_password, new_salt)
+
+        old_enc_vault_name = hashlib.sha256(legacy_key + vault_name.encode('utf-8')).hexdigest()
+        new_enc_vault_name = hashlib.sha256(new_enc_key + vault_name.encode('utf-8')).hexdigest()
+
+        old_vault_folder = os.path.join(VAULTS_DIR, old_enc_vault_name)
+        new_vault_folder = os.path.join(VAULTS_DIR, new_enc_vault_name)
+
+        if not os.path.exists(new_vault_folder):
+            os.makedirs(new_vault_folder)
+
+        if not os.path.exists(TEMP_DIR):
+            os.makedirs(TEMP_DIR)
+        
+        print(f"[INFO] Migrating files for vault '{vault_name}'...")
+
+        for file_meta in vaults[vault_name]["files"]:
+            f_name = file_meta["name"]
+
+            old_enc_file_name = hashlib.sha256(legacy_key + f_name.encode('utf-8')).hexdigest() + ".enc"
+            new_enc_file_name = hashlib.sha256(new_enc_key + f_name.encode('utf-8')).hexdigest() + ".enc"
+
+            old_path = os.path.join(old_vault_folder, old_enc_file_name)
+            new_path = os.path.join(new_vault_folder, new_enc_file_name)
+            temp_path = os.path.join(TEMP_DIR, f_name)
+
+            decrypt_file_legacy(legacy_key, old_path, f_name, TEMP_DIR)
+            encrypt_file(new_enc_key, temp_path, new_path)
+
+            os.remove(temp_path)
+
+            file_meta["enc_hash"] = calculate_file_hash(new_path)
+        
+        if os.path.exists(old_vault_folder):
+            shutil.rmtree(old_vault_folder)
+
+        vaults[vault_name]["salt"] = new_salt.hex()
+        vaults[vault_name]["auth_hash"] = new_auth_hash.decode('utf-8')
+        del vaults[vault_name]["key"]
+
+        with open(VAULT_METADATA_FILE, 'w')as f:
+            json.dump(vaults, f)
+        
+        print(f"[SUCCESS] Vault '{vault_name}' successfully migrated to PQC.")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Vault migration failed for '{vault_name}': {e}")
+        return False
 
 # List all vaults that user has
 def list_vaults_GUI(username):
@@ -1075,18 +1176,22 @@ def create_passMngr(passMngr_pass, pass_Mngr=None):
         return
     reset_session_timer()
     #Create PASS_METADA_FILE
-    if not os.path.exists(PASS_METADATA_FILE):
+    try:
+        if not os.path.exists(PASS_METADATA_FILE):
+            with open(PASS_METADATA_FILE, 'w') as f:
+                json.dump({}, f)
+        pass_Mngr = "Sirius Password Manager"
+        with open(PASS_METADATA_FILE, 'r') as f:
+            pass_Mngrs = json.load(f)
+        passMngr_key, passMngr_auth_hash, passMngr_salt = generate_key(passMngr_pass)
+        pass_Mngrs[pass_Mngr] = {"password_hash": passMngr_auth_hash.decode('utf-8'), "salt": passMngr_salt.hex(), "services": []}
         with open(PASS_METADATA_FILE, 'w') as f:
-            json.dump({}, f)
-    pass_Mngr = "Sirius Password Manager"
-    with open(PASS_METADATA_FILE, 'r') as f:
-        pass_Mngrs = json.load(f)
-    passMngr_key, passMngr_salt = generate_key(passMngr_pass)
-    pass_Mngrs[pass_Mngr] = {"password_hash": passMngr_key.hex(), "salt": passMngr_salt.hex(), "services": []}
-    with open(PASS_METADATA_FILE, 'w') as f:
-        json.dump(pass_Mngrs, f)
-    return True
-
+            json.dump(pass_Mngrs, f)
+        session["pm_enc_key"] = passMngr_key
+        encrypt_passdata_file(passMngr_key)
+        return True
+    except Exception as e:
+        print(f"[ERROR] Password Manager Creation failed: {e}")
 
 # Authenticate Password Manager //Maybe add username as arg?
 def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
@@ -1115,6 +1220,7 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
 
             if migrate_pm_to_pqc(passMngr_pass):
                 session["pm_enc_key"] = enc_key
+                reset_session_timer()
                 encrypt_passdata_file(enc_key)
                 return True
             else:
@@ -1122,7 +1228,9 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
                 return False
         return False
     except Exception as e:
-        try: encrypt_passdata_file(enc_key)
+        try: 
+            encrypt_passdata_file_legacy(passMngr_pass)
+            encrypt_passdata_file(enc_key)
         except: pass
         print(f"[ERROR] Password Manager Authentication failed: {e}")
         return False
