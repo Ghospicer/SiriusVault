@@ -589,15 +589,17 @@ def setup_recovery_codes(username, user_password):
 
     for i, code in enumerate(codes):
         try:
-            rec_key, _ = generate_key(code, salt=code.encode())
-            fernet = Fernet(rec_key)
-            encrypted_pass = fernet.encrypt(user_password.encode())
+            rec_enc_key, _, _ = generate_key(code, salt=code.encode())
+            raw_key = base64.urlsafe_b64decode(rec_enc_key)
+            aesgcm = AESGCM(raw_key)
+            nonce = os.urandom(16)
+            encrypted_pass = aesgcm.encrypt(nonce, user_password.encode('utf-8'), None)
             dat_name = f"recovery_{i}"
             dat_hash = hashlib.sha256(dat_name.encode()).hexdigest()
             file_path = os.path.join(RECOVERY_DIR, f"{dat_hash}.dat")
 
             with open(file_path, 'wb') as f:
-                f.write(encrypted_pass)
+                f.write(nonce + encrypted_pass)
         except Exception as e:
             print(f"[ERROR] Could not create recovery slot {i}: {e}")
             return None
@@ -611,11 +613,22 @@ def recover_account_with_code(username, recovery_code):
     
     recovery_code = recovery_code.strip().upper()
 
+    # Argon2
     try:
-        rec_key, _ = generate_key(recovery_code, salt=recovery_code.encode())
-        fernet = Fernet(rec_key)
-    except:
-        return None
+        rec_enc_key, _, _ = generate_key(recovery_code, salt=recovery_code.encode())
+        raw_key = base64.urlsafe_b64decode(rec_enc_key)
+        aesgcm = AESGCM(raw_key)
+    except Exception as e:
+        print(f"[WARNING] Argon recovery generation failed: {e}")
+        aesgcm = None
+
+    # Legacy
+    try:
+        legacy_key, _ = generate_key_legacy(recovery_code, salt=recovery_code.encode())
+        fernet = Fernet(legacy_key)
+    except Exception as e:
+        print(f"[WARNING] Fernet recovery generation failed: {e}")
+        fernet = None
     
     for filename in os.listdir(RECOVERY_DIR):
         file_path = os.path.join(RECOVERY_DIR, filename)
@@ -623,8 +636,20 @@ def recover_account_with_code(username, recovery_code):
         try:
             with open(file_path, 'rb') as f:
                 encrypted_data = f.read()
-            decryprted_pass = fernet.decrypt(encrypted_data).decode()
-            return decryprted_pass
+            if aesgcm:
+                try:
+                    nonce = encrypted_data[:12]
+                    ciphertext = encrypted_data[12:]
+                    decryprted_pass = aesgcm.decrypt(nonce, ciphertext, None)
+                    return decryprted_pass.decode('utf-8')
+                except Exception:
+                    pass
+            if fernet:
+                try:
+                 decryprted_pass = fernet.decrypt(encrypted_data)
+                 return decryprted_pass.decode('utf-8')
+                except Exception:
+                    pass
         except Exception:
             continue
     return None
@@ -824,6 +849,9 @@ def migrate_user_to_pqc(username, password):
             decrypt_vaultdata_file_legacy(password)
         if os.path.exists(VAULT_METADATA_FILE):
             encrypt_vaultdata_file(new_enc_key)
+
+        new_codes = setup_recovery_codes(username, password)
+        session["migrated_recovery_codes"] = new_codes
 
         print(f"[INFO] User '{username}' successfully migrated to AES-GCM.")
         return True

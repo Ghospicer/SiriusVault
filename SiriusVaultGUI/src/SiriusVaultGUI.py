@@ -129,7 +129,19 @@ class LoginWindow(QtWidgets.QMainWindow):
             return
         
         if backend.authenticate_user(username, password):
-            self.temp_password_holder = password 
+            self.temp_password_holder = password
+            new_codes = backend.session.get("migrated_recovery_codes")
+            if new_codes:
+                code_str = "\n".join(new_codes)
+                msg_text = "SECURITY INFRASTRUCTURE UPGRADED!\n\n"
+                msg_text += "Your account has been successfully migrated to the new Quantum-Resistant architecture.\n"
+                msg_text += "Your old recovery codes are now INVALID.\n"
+                msg_text += "Please save your new recovery codes in a secure location:\n\n"
+                msg_text += code_str
+
+                QMessageBox.information(self, "System Upgrade Complete", msg_text)
+                backend.session["migrated_recovery_codes"] = None
+
             self.open_main_menu()
         else:
             QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
