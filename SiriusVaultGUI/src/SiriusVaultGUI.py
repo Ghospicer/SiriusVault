@@ -1,10 +1,15 @@
 import sys
 import os
+import time
 import shutil
 from PyQt6 import QtWidgets, uic, QtCore, QtGui
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QTableWidgetItem, QHeaderView, QWidget, QHBoxLayout, QPushButton, QApplication, QAbstractItemView, QLineEdit
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor, QFont
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, QMimeData
+
+# Globals
+clipboard_timer = None
+last_copied_sensitive_data = None
 
 # Backend
 try:
@@ -51,6 +56,42 @@ def setup_password_toggle(line_edit):
     line_edit.setEchoMode(QLineEdit.EchoMode.Password)
 
     action.triggered.connect(toggle_visibility)
+
+def secure_copy_to_clipboard(sensitive_text):
+    global clipboard_timer, last_copied_sensitive_data
+
+    mime_data = QMimeData()
+    mime_data.setText(sensitive_text)
+
+    #Win10/11
+    mime_data.setData("ExcludeClipboardContentFromMonitorUI", b'\x00')
+    mime_data.setData("CanIncludeInClipboardHistory", b'\x00')
+    mime_data.setData("CanUploadToCloudClipboard", b'\x00')
+
+    #macOS
+    mime_data.setData("org.nspasteboard.ConcealedType", b'\x00')
+
+    QApplication.clipboard().setMimeData(mime_data)
+    last_copied_sensitive_data = sensitive_text
+
+    if clipboard_timer:
+        clipboard_timer.stop()
+    
+    clipboard_timer = QTimer()
+    clipboard_timer.setSingleShot(True)
+    clipboard_timer.timeout.connect(clear_sensitive_clipboard)
+    clipboard_timer.start(30000) #30s
+
+def clear_sensitive_clipboard():
+    global last_copied_sensitive_data
+
+    current_clipboard_text = QApplication.clipboard().text()
+
+    if last_copied_sensitive_data and current_clipboard_text == last_copied_sensitive_data:
+        QApplication.clipboard().clear()
+        print("[INFO] Clipboard automatically cleared for security.")
+    
+    last_copied_sensitive_data = None
 
 # =============================================================================
 # 1. LOGIN WINDOW (Login, Register, USB Selection)
@@ -128,6 +169,25 @@ class LoginWindow(QtWidgets.QMainWindow):
             QMessageBox.warning(self, "Input Error", "Please fill in all fields.")
             return
         
+        lockout_data = backend.get_lockout_data(username)
+        current_time = int(time.time())
+
+        if lockout_data["lock_until"] > current_time:
+            remaining_seconds = lockout_data["lock_until"] - current_time
+            hours, remainder = divmod(remaining_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+
+            error_msg = f"Account locked due to multiple failed attempts.\n\n"
+            if hours > 0:
+                error_msg += f"Try again in {int(hours)} hour(s), {int(minutes)} minute(s) and {int(seconds)} second(s)."
+            elif minutes > 0:
+                error_msg += f"Try again in {minutes} minute(s) and {seconds} second(s)."
+            else:
+                error_msg += f"Try again in {seconds} second(s)."
+            
+            QMessageBox.critical(self, "Account Locked", error_msg)
+            return
+        
         if backend.authenticate_user(username, password):
             self.temp_password_holder = password
             new_codes = backend.session.get("migrated_recovery_codes")
@@ -144,6 +204,7 @@ class LoginWindow(QtWidgets.QMainWindow):
 
             self.open_main_menu()
         else:
+            backend.record_failed_attempt(username)
             QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
 
     def handle_register(self):
@@ -463,7 +524,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             btn_copy.setToolTip("Copy")
             btn_copy.setFixedSize(35, 30)
             btn_copy.setStyleSheet("background-color: #89b4fa; border: none; border-radius: 4px;")
-            btn_copy.clicked.connect(lambda _, p=s_pass: QApplication.clipboard().setText(p))
+            btn_copy.clicked.connect(lambda _, p=s_pass: secure_copy_to_clipboard(p))
 
             btn_delete = QPushButton("🗑️")
             btn_delete.setToolTip("Delete")
@@ -506,6 +567,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         if hasattr(self, 'master_pm_password'):
             if os.path.exists(backend.PASS_METADATA_FILE):
                 backend.encrypt_passdata_file(self.master_pm_password)
+        clear_sensitive_clipboard()
         self.stack_pass_manager.setCurrentIndex(0) 
 
     # --- SETTINGS & LOGOUT ---
@@ -587,6 +649,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
 
     def handle_logout(self):
         self.session_monitor.stop()
+        clear_sensitive_clipboard()
         self.is_logging_out = True 
         self.close() 
 
@@ -705,19 +768,28 @@ class VaultMenuWindow(QtWidgets.QWidget):
 
     def import_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Encrypt")
+        if not files: return
+
+        reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original files from your computer after they encrypted in the vault?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        delete_originals = (reply == QMessageBox.StandardButton.Yes)
         for f in files:
             self.process_file_import(f)
+            if delete_originals:
+                backend.secure_delete(f)
         self.load_files()
 
     def import_folder_dialog(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder to Encrypt")
         if folder_path:
+            reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original folder and all its contents after encryption?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            delete_originals = (reply == QMessageBox.StandardButton.Yes)
+
             QMessageBox.information(self, "Processing", "Encrypting folder contents... This may take a moment.")
             QApplication.processEvents()
             
             try:
                 backend.decrypt_vaultdata_file(self.user_password)
-                count = backend.add_folder_recursive(self.vault_name, self.vault_key, folder_path, self.current_user)
+                count = backend.add_folder_recursive(self.vault_name, self.vault_key, folder_path, self.current_user, delete_original=delete_originals)
                 QMessageBox.information(self, "Success", f"{count} files encrypted successfully.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
@@ -764,6 +836,9 @@ class VaultMenuWindow(QtWidgets.QWidget):
         if not urls:
             return
         
+        reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original files/folders from your computer after they are encrypted into the vault?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        delete_originals = (reply == QMessageBox.StandardButton.Yes)
+
         QMessageBox.information(self, "Processing", "Encrypting dropped items...")
         QApplication.processEvents()
         
@@ -772,9 +847,11 @@ class VaultMenuWindow(QtWidgets.QWidget):
             for u in urls:
                 local_path = u.toLocalFile()
                 if os.path.isdir(local_path):
-                    backend.add_folder_recursive(self.vault_name, self.vault_key, local_path, self.current_user)
+                    backend.add_folder_recursive(self.vault_name, self.vault_key, local_path, self.current_user, delete_original=delete_originals)
                 elif os.path.isfile(local_path):
                     backend.add_file_to_vault(self.vault_name, self.vault_key, local_path, self.current_user)
+                    if delete_originals:
+                        backend.secure_delete(local_path)
         except Exception as e:
             QMessageBox.warning(self, "Error", f"An error occurred during import:\n{str(e)}")
         finally:
@@ -912,7 +989,7 @@ class AuthCheckDialog(QtWidgets.QDialog):
         self.stackedWidget.setCurrentIndex(0) 
         self.btn_dialog_reqP_auth.clicked.connect(self.check_master_pass)
         self.btn_dialog_reqP_close.clicked.connect(self.accept)
-        self.btn_dialog_reqP_copy.clicked.connect(self.copy_to_clip)
+        self.btn_dialog_reqP_copy.clicked.connect(self.copy_to_clipboard)
         self.btn_dialog_reqP_reveal.clicked.connect(self.toggle_reveal)
 
     def check_master_pass(self):
@@ -942,8 +1019,8 @@ class AuthCheckDialog(QtWidgets.QDialog):
         else:
             self.output_dialog_reqP_serviceP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
-    def copy_to_clip(self):
-        QApplication.clipboard().setText(self.output_dialog_reqP_serviceP.text())
+    def copy_to_clipboard(self):
+        secure_copy_to_clipboard(self.output_dialog_reqP_serviceP.text())
         original_text = self.btn_dialog_reqP_copy.text()
         self.btn_dialog_reqP_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_reqP_copy.setText(original_text))
@@ -994,7 +1071,7 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
             self.output_dialog_genP_generatedP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
     def copy_to_clipboard(self):
-        QApplication.clipboard().setText(self.output_dialog_genP_generatedP.text())
+        secure_copy_to_clipboard(self.output_dialog_genP_generatedP.text())
         original_text = self.btn_dialog_genP_copy.text()
         self.btn_dialog_genP_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_genP_copy.setText(original_text))
@@ -1047,7 +1124,7 @@ class RecoveryDialog(QtWidgets.QDialog):
             QMessageBox.critical(self, "Failed", "Invalid Username or Recovery Code.\nPlease check your inputs.")
 
     def copy_to_clipboard(self):
-        QApplication.clipboard().setText(self.output_recovered_pass.text())
+        secure_copy_to_clipboard(self.output_recovered_pass.text())
         original_text = self.btn_dialog_rec_copy.text()
         self.btn_dialog_rec_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_rec_copy.setText(original_text))

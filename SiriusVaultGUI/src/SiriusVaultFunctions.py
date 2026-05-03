@@ -2,6 +2,7 @@ import os
 import io
 import json
 import hashlib
+import hmac
 import argon2
 import time
 import base64
@@ -52,6 +53,8 @@ session_timer = None
 
 def reset_session_timer():
     global session_timer
+    if not session.get("authenticated_user"):
+        return
     if session_timer:
         session_timer.cancel()
     session["session_expiry"] = time.time() + SESSION_TIMEOUT
@@ -108,6 +111,39 @@ def clean_memory():
         del os.environ['SYSTEM_SALT']
     
     print("[INFO] Global variables wiped from memory.")
+
+def secure_delete(filepath, passes=3):
+
+    if not os.path.exists(filepath):
+        return
+    
+    try:
+        length = os.path.getsize(filepath)
+        if length == 0:
+            os.remove(filepath)
+            return True
+        
+        with open(filepath, "ba+", buffering=0) as f:
+            for _ in range(passes):
+                f.seek(0)
+                f.write(os.urandom(length))
+
+            f.seek(0)
+            f.write(b'\x00' * length)
+
+        os.fsync(f.fileno())
+
+        dir_name = os.path.dirname(filepath)
+        random_name = os.path.join(dir_name, secrets.token_hex(8) + ".tmp")
+        os.rename(filepath, random_name)
+
+        os.remove(random_name)
+        return True
+    except Exception as e:
+        print(f"[WARNING] Secure delete failed for {filepath}. Falling back to normal remove. Error: {e}")
+        try: os.remove(filepath)
+        except: pass
+        return False
 
 def logout_user():
     global session_timer
@@ -309,7 +345,7 @@ def encrypt_userdata_file_legacy(password):
         with open(encrypted_path, 'wb') as enc_file:
             enc_file.write(encrypted_data)
         if os.path.exists(USER_DATA_FILE):
-            os.remove(USER_DATA_FILE)
+            secure_delete(USER_DATA_FILE)
         else:
             return None
     except Exception as e:
@@ -333,7 +369,7 @@ def encrypt_vaultdata_file_legacy(password):
         with open(encrypted_path, 'wb') as enc_file:
             enc_file.write(encrypted_data)
         if os.path.exists(VAULT_METADATA_FILE):
-            os.remove(VAULT_METADATA_FILE)
+            secure_delete(VAULT_METADATA_FILE)
         else:
             return None
     except Exception as e:
@@ -357,7 +393,7 @@ def encrypt_passdata_file_legacy(password):
         with open(encrypted_path, 'wb') as enc_file:
             enc_file.write(encrypted_data)
         if os.path.exists(PASS_METADATA_FILE):
-            os.remove(PASS_METADATA_FILE)
+            secure_delete(PASS_METADATA_FILE)
         else:
             return None
     except Exception as e:
@@ -425,7 +461,7 @@ def decrypt_passdata_file_legacy(password):
         return None
     return decrypted_path
 
-# Eencryption/Decryption Functions
+# Encryption/Decryption Functions
 def generate_key(password, salt=None):
     if salt == None:
         salt = os.urandom(16)
@@ -501,7 +537,7 @@ def encrypt_userdata_file(enc_key):
         return None
     try:
         encrypt_file(enc_key, USER_DATA_FILE, ENC_USER_DATA_FILE)
-        os.remove(USER_DATA_FILE)
+        secure_delete(USER_DATA_FILE)
         return ENC_USER_DATA_FILE
     except Exception as e:
         print(f"[ERROR] User data ENC failed: {e}")
@@ -513,7 +549,7 @@ def encrypt_vaultdata_file(enc_key):
         return None
     try:
         encrypt_file(enc_key, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE)
-        os.remove(VAULT_METADATA_FILE)
+        secure_delete(VAULT_METADATA_FILE)
         return ENC_VAULT_METADATA_FILE
     except Exception as e:
         print(f"[ERROR] Vault data ENC failed: {e}")
@@ -525,7 +561,7 @@ def encrypt_passdata_file(enc_key):
         return None
     try:
         encrypt_file(enc_key, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE)
-        os.remove(PASS_METADATA_FILE)
+        secure_delete(PASS_METADATA_FILE)
         return ENC_PASS_METADATA_FILE
     except Exception as e:
         print(f"[ERROR] PM data ENC failed: {e}")
@@ -798,6 +834,7 @@ def authenticate_user(username, password):
             
             if stored_password_hash == auth_hash.decode('utf-8'):
                 print("User Authentication successful!")
+                reset_lockout(username)
                 session["authenticated_user"] = username
                 session["session_timeout_index"] = user_data.get("session_timeout_index", 1)
                 reset_session_timer()
@@ -810,6 +847,7 @@ def authenticate_user(username, password):
         if decrypt_userdata_file_legacy(password):
             print("[INFO] Legacy account detected. Initiating migration...")
             if migrate_user_to_pqc(username, password):
+                reset_lockout(username)
                 session["authenticated_user"] = username
                 with open(USER_DATA_FILE, 'r') as f:
                     user_data = json.load(f)
@@ -858,6 +896,64 @@ def migrate_user_to_pqc(username, password):
     except Exception as e:
         print(f"[ERROR] Migration failed for '{username}': {e}")
         return False
+
+# Brute Force Protection (In TEST)
+def get_lockout_data(username):
+    load_user_context(username)
+    USER_SYSTEM_SALT = initialize_user_system_salt()
+    security_file = os.path.join(USER_DIR, "security.json")
+
+    if not os.path.exists(security_file) or not USER_SYSTEM_SALT:
+        return {"attempts": 0, "lock_until": 0}
+    
+    try:
+        with open(security_file, 'r') as f:
+            data = json.load(f)
+
+        payload = f"{data['attempts']}:{data['lock_until']}"
+        expected_sig = hmac.new(USER_SYSTEM_SALT.encode(), payload.encode, hashlib.sha256).hexdigest()
+
+        if data.get("signature") != expected_sig:
+            print("[WARNING] Security file tampered! Applying harsh penalty.")
+            record_failed_attempt(username, penalty_override=86400)
+            return {"attempts": 99, "lock_until": time.time() + 86400}
+        
+        return data
+    except Exception:
+        return {"attempts": 0, "lock_until": 0}
+    
+def record_failed_attempt(username, penalty_override=None):
+    load_user_context(username)
+    USER_SYSTEM_SALT = initialize_user_system_salt()
+    if not USER_SYSTEM_SALT:
+        return
+    
+    security_file = os.path.join(USER_DIR, "security.json")
+    data = get_lockout_data(username)
+
+    attempts = data["attempts"] + 1
+
+    if penalty_override:
+        lockout_duration = penalty_override
+    elif attempts >= 6: lockout_duration = 3600 #1s
+    elif attempts >= 5: lockout_duration = 900 #15dk
+    elif attempts >= 4: lockout_duration = 300 #5dk
+    elif attempts >= 3: lockout_duration = 60 #1dk
+    else: lockout_duration = 0
+
+    lock_until = int(time.time() + lockout_duration) if lockout_duration > 0 else 0
+
+    payload = f"{attempts}:{lock_until}"
+    signature = hmac.new(USER_SYSTEM_SALT.encode(), payload.encode(), hashlib.sha256).hexdigest()
+
+    with open(security_file, 'w') as f:
+        json.dump({"attempts": attempts, "lock_until": lock_until, "signature": signature}, f)
+
+def reset_lockout(username):
+    load_user_context(username)
+    security_file = os.path.join(USER_DIR, "security.json")
+    if os.path.exists(security_file):
+        os.remove(security_file)
 
 # Delete user
 def delete_user(username, user_password):
@@ -998,7 +1094,7 @@ def migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
             decrypt_file_legacy(legacy_key, old_path, f_name, TEMP_DIR)
             encrypt_file(new_enc_key, temp_path, new_path)
 
-            os.remove(temp_path)
+            secure_delete(temp_path)
 
             file_meta["enc_hash"] = calculate_file_hash(new_path)
         
@@ -1098,16 +1194,28 @@ def add_file_to_vault(vault_name, vault_key, filepath, username):
         json.dump(vaults, f)
     #print(f"File '{os.path.basename(filepath)}' added to vault {vault_name}!")
 
-def add_folder_recursive(vault_name, vault_key, folder_path, username):
+def add_folder_recursive(vault_name, vault_key, folder_path, username, delete_original=False):
     
-    for root, dirs, files in os.walk(folder_path):
+    for root, _, files in os.walk(folder_path, topdown=False):
         for file in files:
             file_path = os.path.join(root, file)
             try:
                 add_file_to_vault(vault_name, vault_key, file_path, username)
+                if delete_original:
+                    secure_delete(file_path)
                 print(f"[INFO] Processed: {file}")
             except Exception as e:
                 print(f"[ERROR] Could not process {file}: {e}")
+        if delete_original:
+            try: 
+                os.rmdir(root)
+            except:
+                pass
+    if delete_original:
+        try:
+            os.rmdir(folder_path)
+        except:
+            pass
 
 # List files in vault
 def list_files_in_vault_GUI(vault_name, username):
