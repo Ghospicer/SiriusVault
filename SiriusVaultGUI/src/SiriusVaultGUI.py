@@ -336,10 +336,9 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         
         # [DEC -> OP -> ENC]
         try:
-            backend.decrypt_vaultdata_file(self.user_password)
-            vaults = backend.list_vaults_GUI(self.current_user)
+            vaults = backend.list_vaults_GUI(self.current_user, self.user_password)
         finally:
-            backend.encrypt_vaultdata_file(self.user_password)
+            pass
 
         if vaults:
             for v_name in vaults:

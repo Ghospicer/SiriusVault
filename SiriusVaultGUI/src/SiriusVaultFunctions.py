@@ -800,7 +800,8 @@ def create_user(username, password):
     user_data = {"username": username,
                 "password_hash": auth_hash.decode('utf-8'),
                 "salt": salt.hex(),
-                "session_timeout_index": 1}
+                "session_timeout_index": 1,
+                "vaults": {}}
     with open(USER_DATA_FILE, 'w') as f:
         json.dump(user_data, f)
     encrypt_userdata_file(enc_key)
@@ -975,7 +976,7 @@ def delete_user(username, user_password):
             print("User not found.")
 
 # Vault Management
-def create_vault(vault_name, password, user_password): 
+def create_vault(vault_name, vault_password, user_password): 
     if not is_session_active():
         return
     username = session["authenticated_user"]
@@ -986,34 +987,46 @@ def create_vault(vault_name, password, user_password):
         USER_SYSTEM_SALT = initialize_user_system_salt()
 
     master_enc_key, _, _ = generate_key(user_password, USER_SYSTEM_SALT)
-
-    decrypt_vaultdata_file(master_enc_key)
-
-    if not os.path.exists(VAULT_METADATA_FILE):
-        with open(VAULT_METADATA_FILE, 'w') as f:
-            json.dump({}, f)
+    if not decrypt_userdata_file(master_enc_key):
+        return "ERROR"
+    
     try:
-        with open(VAULT_METADATA_FILE, 'r') as f:
-            vaults = json.load(f)
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+        
+        if vault_name in user_data["vaults"]: return "SAME_NAME"
 
-        if vault_name in vaults:
-            return "SAME_NAME"
-    
-        enc_key, auth_hash, salt = generate_key(password)
-        enc_vault_name = hashlib.sha256(enc_key + vault_name.encode('utf-8')).hexdigest()
+        outer_salt = os.urandom(16)
+        outer_key, _, _ = generate_key(vault_password, outer_salt)
+
+        enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
         vault_path = os.path.join(VAULTS_DIR, enc_vault_name)
-        vaults[vault_name] = {"owner": username, "auth_hash": auth_hash.decode('utf-8'), "salt": salt.hex(), "files": []}
     
-        with open(VAULT_METADATA_FILE, 'w') as f:
-            json.dump(vaults, f)
-    
-        if not os.path.exists(vault_path): 
-            os.makedirs(vault_path)
-            return "SUCCESS"
-        else:
+        if os.path.exists(vault_path):
             return "SAME_NAME"
+        os.makedirs(vault_path)
+
+        inner_key, auth_hash, inner_salt = generate_key(vault_password)
+
+        vault_meta = {"owner": username,
+                      "inner_salt": inner_salt.hex(),
+                      "auth_hash": auth_hash.decode('utf-8'),
+                      "files": [] }
+
+        temp_meta_path = os.path.join(vault_path, "vault_metadata.json")
+        with open(temp_meta_path, 'w') as f:
+            json.dump(vault_meta, f)
+
+        enc_meta_path = os.path.join(vault_path, "vault_metadata.json.enc")
+        encrypt_file(outer_key, temp_meta_path, enc_meta_path) #Bak buraya
+        secure_delete(temp_meta_path)
+
+        user_data["vaults"][vault_name] = {"outer_salt": outer_salt.hex()}
+        with open(USER_DATA_FILE, 'w') as f:
+            json.dump(user_data, f)
+        return "SUCCESS"
     finally:
-        encrypt_vaultdata_file(master_enc_key)
+        encrypt_userdata_file(master_enc_key)
 
 # Open the vault
 def authenticate_vault(vault_name, vault_password, user_password):
@@ -1028,38 +1041,45 @@ def authenticate_vault(vault_name, vault_password, user_password):
 
     master_enc_key, _, _ = generate_key(user_password, USER_SYSTEM_SALT)
 
-    if not decrypt_vaultdata_file(master_enc_key):
-        if not decrypt_vaultdata_file_legacy(user_password):
-            print("[ERROR] Wrong credentials!")
+    if not os.path.exists(USER_DATA_FILE):
+        decrypt_userdata_file(master_enc_key)
+
+    try:
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+
+        if vault_name not in user_data["vaults"]:
             return None
         
-    try:
+        outer_salt = bytes.fromhex(user_data["vaults"][vault_name]["outer_salt"])
+        outer_key, _, _ = generate_key(vault_password, outer_salt)
 
-        with open(VAULT_METADATA_FILE, 'r') as f:
-            vaults = json.load(f)
+        enc_vault_name = hashlib.sha256(outer_key, vault_name.decode('utf-8')).hexdigest()
+        vault_path = os.path.join(VAULTS_DIR, enc_vault_name)
+        enc_meta_path = os.path.join(vault_path, "vault_metadata.json.enc")
 
-        if vault_name not in vaults or vaults[vault_name]["owner"] != username:
+        if not os.path.exists(enc_meta_path):
             return None
-    
-        v_data = vaults[vault_name]
-        if "auth_hash" in v_data:
-            stored_salt = bytes.fromhex(v_data["salt"])
-            vault_enc_key, auth_hash, _ = generate_key(vault_password, stored_salt)
-            if v_data["auth_hash"] == auth_hash.decode('utf-8'):
-                return vault_enc_key
+        
+        temp_meta_path = os.path.join(vault_path, "vault_metadata.json")
+        try:
+            decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_path)
+        except:
             return None
-        elif "key" in v_data:
-            stored_salt = bytes.fromhex(v_data["salt"])
-            stored_key = bytes.fromhex(vaults[vault_name]["key"])
-            legacy_key, _ = generate_key_legacy(vault_password, stored_salt)
-            if stored_key == legacy_key:
-                print(f"[INFO] Legacy Vault '{vault_name}' detected. Upgrading to PQC...")
-                if migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
-                    return authenticate_vault(vault_name, vault_password)
-            return None
+        
+        with open(temp_meta_path, 'r') as f:
+            vault_meta = json.load(f)
+
+        inner_salt = bytes.fromhex(vault_meta["inner_salt"])
+        inner_key, auth_hash, _ = generate_key(vault_password, inner_salt)
+
+        if vault_meta["auth_hash"] == auth_hash.decode('utf-8'):
+            secure_delete(temp_meta_path)
+            return {"outer_key":outer_key, "inner_key": inner_key}
+        secure_delete(temp_meta_path)
+        return None
     finally:
-        encrypt_vaultdata_file(master_enc_key)
-    return None
+        encrypt_userdata_file(master_enc_key)
 
 # Migrate
 def migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
@@ -1115,49 +1135,50 @@ def migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
         return False
 
 # List all vaults that user has
-def list_vaults_GUI(username):
+def list_vaults_GUI(username, user_password):
     if not is_session_active():
         return None
-    username = session["authenticated_user"]
     reset_session_timer()
-    if os.path.exists(VAULT_METADATA_FILE):
-        with open(VAULT_METADATA_FILE, 'r') as f:
-            vaults = json.load(f)
-        user_vaults = [vault_name for vault_name, metadata in vaults.items() if metadata["owner"] == username]
-        if user_vaults:
-            return user_vaults
+
+    global USER_SYSTEM_SALT
+    master_enc_key, _, _ = generate_key(user_password, USER_SYSTEM_SALT)
+    decrypt_userdata_file(master_enc_key)
+    try:
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+        return list(user_data.get("vaults", {}).keys())
+    finally:
+        encrypt_userdata_file(master_enc_key)
 
 # Delete a vault
-def delete_vault(username, vault_name, vault_key):
+def delete_vault(username, vault_name, vault_keys, user_password):
     if not is_session_active():
         return None
-    username = session["authenticated_user"]
     reset_session_timer()
 
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    metadata = vaults.items()
-    if vault_name not in vaults and metadata["owner"] != username:
-        #print("Vault not found!")
-        return
-    
-    enc_vault_name = hashlib.sha256(vault_key + vault_name.encode('utf-8')).hexdigest()
-    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+    global USER_SYSTEM_SALT
+    master_enc_key, _, _ = generate_key(user_password, USER_SYSTEM_SALT)
 
-    if os.path.exists(vault_folder):
-        shutil.rmtree(vault_folder)
-    else:
-        #print("Vault folder not found!")
-        return
-    
-    del vaults[vault_name]
+    decrypt_userdata_file(master_enc_key)
+    try:
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+        if vault_name in user_data.get("vaults", {}):
+            del user_data["vaults"][vault_name]
+            with open(USER_DATA_FILE, 'w') as f:
+                json.dump(user_data, f)
 
-    with open(VAULT_METADATA_FILE, 'w') as f:
-        json.dump(vaults, f)
-    #print(f"Vault '{vault_name}' removed!")
+        outer_key = vault_keys["outer_key"]
+        enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
+        vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+        
+        if os.path.exists(vault_folder):
+            shutil.rmtree(vault_folder)
+    finally:
+        encrypt_userdata_file(master_enc_key)
 
 # Add file to vault
-def add_file_to_vault(vault_name, vault_key, filepath, username):
+def add_file_to_vault(vault_name, vault_keys, filepath, username):
     if not is_session_active():
         return
     reset_session_timer()
@@ -1165,34 +1186,43 @@ def add_file_to_vault(vault_name, vault_key, filepath, username):
     if not os.path.exists(filepath):
         #print("File not found!")
         return
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    metadata = vaults.items()
-    if vault_name not in vaults and metadata["owner"] != username:
-        #print("Vault not found!")
-        return
-    enc_vault_name = hashlib.sha256(vault_key + vault_name.encode('utf-8')).hexdigest()
-    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
-    file_name = f"{os.path.basename(filepath)}"
-    enc_file_name = hashlib.sha256(vault_key + file_name.encode('utf-8')).hexdigest()
-    encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
+    
+    outer_key = vault_keys["outer_key"]
+    inner_key = vault_keys["inner_key"]
 
-    encrypt_file(vault_key, filepath, encrypted_path)
+    enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
+    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+
+    file_name = os.path.basename(filepath)
+    enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
+    encrypted_path = os.path.join(VAULTS_DIR, f"{enc_file_name}.enc")
+
+    encrypt_file(inner_key, filepath, encrypted_path)
+
     file_hash = calculate_file_hash(filepath)
     enc_file_hash = calculate_file_hash(encrypted_path)
 
-    # Add metadata
+    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
+    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
+    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+
+    with open(temp_meta_path, 'r') as f:
+        vault_meta = json.load(f)
+
     file_metadata = {
-        "name": os.path.basename(filepath),
+        "name": file_name,
         "size": os.path.getsize(filepath),
         "hash": file_hash,
         "enc_hash": enc_file_hash,
         "date_added": time.strftime('%Y-%m-%d %H:%M:%S')
     }
-    vaults[vault_name]["files"].append(file_metadata)
-    with open(VAULT_METADATA_FILE, 'w') as f:
-        json.dump(vaults, f)
-    #print(f"File '{os.path.basename(filepath)}' added to vault {vault_name}!")
+    vault_meta["files"].append(file_metadata)
+
+    with open(temp_meta_path, 'w') as f:
+        json.dump(vault_meta, f)
+
+    encrypt_file(outer_key, temp_meta_path, enc_meta_path)
+    secure_delete(temp_meta_path)
 
 def add_folder_recursive(vault_name, vault_key, folder_path, username, delete_original=False):
     
@@ -1218,93 +1248,109 @@ def add_folder_recursive(vault_name, vault_key, folder_path, username, delete_or
             pass
 
 # List files in vault
-def list_files_in_vault_GUI(vault_name, username):
+def list_files_in_vault_GUI(vault_name, username, vault_keys):
     if not is_session_active():
         return
     reset_session_timer()
 
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    metadata = vaults.items()
-    if vault_name not in vaults and metadata["owner"] != username:
-        #print("Vault not found!")
-        return
-    files = vaults[vault_name]["files"]
+    outer_key = vault_keys["outer_key"]
+    enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
+    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
+
+    if not os.path.exists(enc_meta_path):
+        return []
+    
+    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
+    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+
+    with open(temp_meta_path, 'r') as f:
+        vault_meta = json.laod(f)
+
+    files = vault_name.get("files", [])
+
+    secure_delete(temp_meta_path)
     return files
 
 # Remove file from vault
-def remove_file_from_vault(vault_name, file_name, username, vault_key):
+def remove_file_from_vault(vault_name, file_name, username, vault_keys):
     if not is_session_active():
         return
     reset_session_timer()
 
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    metadata = vaults.items()
-    if vault_name not in vaults and metadata["owner"] != username:
-        #print("Vault not found!")
-        return
+    outer_key = vault_keys["outer_key"]
+    inner_key = vault_keys["inner_key"]
 
-    file_metadata = next((file for file in vaults[vault_name]["files"] if file["name"] == file_name), None)
-    if not file_metadata:
-        #print("File not found in vault!")
-        return
-
-    enc_vault_name = hashlib.sha256(vault_key + vault_name.encode('utf-8')).hexdigest()
+    enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
     vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
-    enc_file_name = hashlib.sha256(vault_key + file_name.encode('utf-8')).hexdigest()
-    encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
+
+    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
+    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
+    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+
+    with open(temp_meta_path, 'r') as f:
+        vault_meta = json.load(f)
+
+    file_metadata = next((file for file in vault_meta["files"] if file["name"] == file_name), None)
+    if not file_metadata: 
+        secure_delete(temp_meta_path)
+        return
     
+    enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
+    encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
     if os.path.exists(encrypted_path):
         os.remove(encrypted_path)
-    else:
-        #print("Encrypted file not found!")
-        return
 
-    # Remove metadata
-    vaults[vault_name]["files"].remove(file_metadata)
-    with open(VAULT_METADATA_FILE, 'w') as f:
-        json.dump(vaults, f)
-    #print(f"File '{file_name}' removed from vault!")
+    vault_meta["files"].remove(file_metadata)
+    with open(temp_meta_path, 'w') as f:
+        json.dump(vault_meta, f)
+
+    encrypt_file(outer_key, temp_meta_path, enc_meta_path)
+    secure_delete(temp_meta_path)
 
 # Extract file from vault
-def extract_file_from_vault(vault_name, vault_key, file_name, destination_path):
+def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path):
     if not is_session_active():
         return
     reset_session_timer()
 
-    with open(VAULT_METADATA_FILE, 'r') as f:
-        vaults = json.load(f)
-    if vault_name not in vaults:
-        #print("Vault not found!")
-        return
+    outer_key = vault_keys["outer_key"]
+    inner_key = vault_keys["inner_key"]
 
-    file_name = file_name.strip()
-    enc_file_name = hashlib.sha256(vault_key + file_name.encode()).hexdigest()
-    enc_vault_name = hashlib.sha256(vault_key + vault_name.encode()).hexdigest()
-    file_metadata = next((file for file in vaults[vault_name]["files"] if file["name"].lower() == file_name.lower()), None)
+    enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
+    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
+
+    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
+    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+
+    with open(temp_meta_path, 'r') as f:
+        vault_meta = json.load(f)
+    secure_delete(temp_meta_path)
+
+    file_metadata = next((file for file in vault_meta["files"] if file["name"].lower() == file_name.lower()), None)
     if not file_metadata:
-        #print("File not found in vault!")
         return
     
-    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+    enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
     encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
+
     if not os.path.exists(encrypted_path):
-        #print("Encrypted file not found!")
         return
+    
     enc_file_hash = calculate_file_hash(encrypted_path)
-    stored_enc_file_hash = next((file["enc_hash"] for file in vaults[vault_name]["files"] if file["name"] == file_name), None)
+    stored_enc_file_hash = next((file["enc_hash"] for file in vault_meta["files"] if file["name"] == file_name), None)
     if enc_file_hash != stored_enc_file_hash:
         #print("Encrypted file corrupted!")
         return
-    decrypt_file(vault_key, encrypted_path, file_name, destination_path)
+
+    decrypt_file(inner_key, encrypted_path, file_name, destination_path)
     decrypted_path = os.path.join(destination_path, f"{file_name}")
     file_hash = calculate_file_hash(decrypted_path)
-    stored_file_hash = next((file["hash"] for file in vaults[vault_name]["files"] if file["name"] == file_name), None)
+    stored_file_hash = next((file["hash"] for file in vault_meta["files"] if file["name"] == file_name), None)
     if file_hash != stored_file_hash:
         #print("Decrypted file corrupted!")
         return
-    #print(f"File '{file_metadata['name']}' extracted to '{destination_path}'")
 
 # Password Manager
 def create_passMngr(passMngr_pass, pass_Mngr=None):
