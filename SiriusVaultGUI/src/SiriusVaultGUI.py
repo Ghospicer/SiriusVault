@@ -334,11 +334,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def load_vaults_table(self):
         self.table_vaults.setRowCount(0)
         
-        # [DEC -> OP -> ENC]
-        try:
-            vaults = backend.list_vaults_GUI(self.current_user, self.user_password)
-        finally:
-            pass
+        vaults = backend.list_vaults_GUI(self.current_user, self.user_password)
 
         if vaults:
             for v_name in vaults:
@@ -387,14 +383,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def delete_vault_click(self, vault_name):
         dialog = VaultLoginDialog(vault_name, self.user_password, self)
         if dialog.exec():
-            vault_key = dialog.vault_key
+            vault_keys = dialog.vault_keys
             confirm = QMessageBox.question(self, "Confirm Delete", f"Delete vault '{vault_name}' permanently?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if confirm == QMessageBox.StandardButton.Yes:
-                try:
-                    backend.decrypt_vaultdata_file(self.user_password)
-                    backend.delete_vault(self.current_user, vault_name, vault_key)
-                finally:
-                    backend.encrypt_vaultdata_file(self.user_password)
+                backend.delete_vault(self.current_user, vault_name, vault_keys, self.user_password)
                 self.load_vaults_table()
 
     def open_create_vault_dialog(self):
@@ -407,8 +399,8 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         login_dialog = VaultLoginDialog(vault_name, self.user_password, self)
         
         if login_dialog.exec():
-            vault_key = login_dialog.vault_key
-            self.vault_window = VaultMenuWindow(vault_name, vault_key, self.user_password, parent_menu=self)
+            vault_keys = login_dialog.vault_keys
+            self.vault_window = VaultMenuWindow(vault_name, vault_keys, self.user_password, parent_menu=self)
             self.hide() 
             self.vault_window.show()
 
@@ -675,12 +667,12 @@ class MainMenuWindow(QtWidgets.QMainWindow):
 # 3. VAULT CONTENT WINDOW
 # =============================================================================
 class VaultMenuWindow(QtWidgets.QWidget):
-    def __init__(self, vault_name, vault_key, user_password, parent_menu=None):
+    def __init__(self, vault_name, vault_keys, user_password, parent_menu=None):
         super().__init__()
         uic.loadUi(get_ui_path("vault_menu.ui"), self)
         
         self.vault_name = vault_name
-        self.vault_key = vault_key 
+        self.vault_keys = vault_keys 
         self.user_password = user_password
         self.current_user = backend.session["authenticated_user"]
         self.parent_menu = parent_menu
@@ -723,11 +715,8 @@ class VaultMenuWindow(QtWidgets.QWidget):
 
     def load_files(self):
         self.table_files.setRowCount(0)
-        try:
-            backend.decrypt_vaultdata_file(self.user_password)
-            files = backend.list_files_in_vault_GUI(self.vault_name, self.current_user)
-        finally:
-            backend.encrypt_vaultdata_file(self.user_password)
+
+        files = backend.list_files_in_vault_GUI(self.vault_name, self.current_user, self.vault_keys)
             
         if not files: return
 
@@ -787,42 +776,27 @@ class VaultMenuWindow(QtWidgets.QWidget):
             QApplication.processEvents()
             
             try:
-                backend.decrypt_vaultdata_file(self.user_password)
-                count = backend.add_folder_recursive(self.vault_name, self.vault_key, folder_path, self.current_user, delete_original=delete_originals)
+                count = backend.add_folder_recursive(self.vault_name, self.vault_keys, folder_path, self.current_user, delete_original=delete_originals)
                 QMessageBox.information(self, "Success", f"{count} files encrypted successfully.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
-            finally:
-                backend.encrypt_vaultdata_file(self.user_password)
             
             self.load_files()
 
     def process_file_import(self, filepath):
-        try:
-            backend.decrypt_vaultdata_file(self.user_password)
-            backend.add_file_to_vault(self.vault_name, self.vault_key, filepath, self.current_user)
-        finally:
-            backend.encrypt_vaultdata_file(self.user_password)
+        backend.add_file_to_vault(self.vault_name, self.vault_keys, filepath, self.current_user)
 
     def extract_file(self, file_name):
         dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination")
         if dest_folder:
-            try:
-                backend.decrypt_vaultdata_file(self.user_password)
-                backend.extract_file_from_vault(self.vault_name, self.vault_key, file_name, dest_folder)
+                backend.extract_file_from_vault(self.vault_name, self.vault_keys, file_name, dest_folder)
                 QMessageBox.information(self, "Success", f"File extracted to {dest_folder}")
-            finally:
-                backend.encrypt_vaultdata_file(self.user_password)
 
     def delete_file(self, file_name):
         confirm = QMessageBox.question(self, "Delete", f"Delete {file_name}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
-            try:
-                backend.decrypt_vaultdata_file(self.user_password)
-                backend.remove_file_from_vault(self.vault_name, file_name, self.current_user, self.vault_key)
-            finally:
-                backend.encrypt_vaultdata_file(self.user_password)
-            self.load_files()
+                backend.remove_file_from_vault(self.vault_name, file_name, self.current_user, self.vault_keys)
+                self.load_files()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -842,26 +816,20 @@ class VaultMenuWindow(QtWidgets.QWidget):
         QApplication.processEvents()
         
         try:
-            backend.decrypt_vaultdata_file(self.user_password)
             for u in urls:
                 local_path = u.toLocalFile()
                 if os.path.isdir(local_path):
-                    backend.add_folder_recursive(self.vault_name, self.vault_key, local_path, self.current_user, delete_original=delete_originals)
+                    backend.add_folder_recursive(self.vault_name, self.vault_keys, local_path, self.current_user, delete_original=delete_originals)
                 elif os.path.isfile(local_path):
-                    backend.add_file_to_vault(self.vault_name, self.vault_key, local_path, self.current_user)
+                    backend.add_file_to_vault(self.vault_name, self.vault_keys, local_path, self.current_user)
                     if delete_originals:
                         backend.secure_delete(local_path)
         except Exception as e:
             QMessageBox.warning(self, "Error", f"An error occurred during import:\n{str(e)}")
-        finally:
-            backend.encrypt_vaultdata_file(self.user_password)
         
         self.load_files()
 
     def closeEvent(self, event):
-        if os.path.exists(backend.VAULT_METADATA_FILE):
-            backend.encrypt_vaultdata_file(self.user_password)
-
         if self.parent_menu:
             self.parent_menu.show()
             self.parent_menu.load_vaults_table()
@@ -925,12 +893,12 @@ class VaultLoginDialog(QtWidgets.QDialog):
         self.btn_dialog_vLogin_cancel.clicked.connect(self.reject)
 
     def attempt_login(self):
-        pwd = self.input_dialog_vLogin_vpassword.text()
+        vault_pwd = self.input_dialog_vLogin_vpassword.text()
 
-        key = backend.authenticate_vault(self.vault_name, pwd, self.user_password)
+        keys = backend.authenticate_vault(self.vault_name, vault_pwd, self.user_password)
             
-        if key:
-            self.vault_key = key
+        if keys:
+            self.vault_keys = keys
             self.accept()
         else:
             QMessageBox.warning(self, "Error", "Incorrect Password.")

@@ -20,6 +20,11 @@ from threading import Timer
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+try:
+    import LegacyFunctions as legacy
+except ImportError:
+    print("Legacy functions not found!")
+
 # Constants for user, password and vault management
 # GLOBAL PATH VARIABLES
 STORAGE_ROOT = None
@@ -130,8 +135,7 @@ def secure_delete(filepath, passes=3):
 
             f.seek(0)
             f.write(b'\x00' * length)
-
-        os.fsync(f.fileno())
+            os.fsync(f.fileno())
 
         dir_name = os.path.dirname(filepath)
         random_name = os.path.join(dir_name, secrets.token_hex(8) + ".tmp")
@@ -301,170 +305,15 @@ def move_user_data(username, new_path):
         print(f"[ERROR] User data move failed: {e}")
         return "ERROR"
 
-# Encryption/Decryption Functions (LEGACY)
-def generate_key_legacy(password, salt=None):
-    if salt is None:
-        salt = os.urandom(16)
-    raw_key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
-    return base64.urlsafe_b64encode(raw_key), salt
-
-# In use (LEGACY)
-def encrypt_file_legacy(vault_key, filepath, encrypted_path):
-    fernet = Fernet(vault_key)
-    with open(filepath, 'rb') as file:
-        file_data = file.read()
-    encrypted_data = fernet.encrypt(file_data)
-    with open(encrypted_path, 'wb') as enc_file:
-        enc_file.write(encrypted_data)
-    return encrypted_path
-
-# In use (LEGACY)
-def decrypt_file_legacy(vault_key, encrypted_filepath, filename, destination_path):
-    fernet = Fernet(vault_key)
-    with open(encrypted_filepath, 'rb') as enc_file:
-        encrypted_data = enc_file.read()
-    decrypted_data = fernet.decrypt(encrypted_data)
-    decrypted_path = os.path.join(f"{destination_path}", f"{filename}")
-    with open(decrypted_path, 'wb') as dec_file:
-        dec_file.write(decrypted_data)
-    return decrypted_path
-
-# In use (LEGACY)
-def encrypt_userdata_file_legacy(password):
-    if not os.path.exists(USER_DATA_FILE):
-        return None
-    data_salt = bytes.fromhex(USER_SYSTEM_SALT)
-    data_key = password
-    try:
-        jsonKey, _ = generate_key_legacy(data_key, data_salt)
-        fernet = Fernet(jsonKey)
-        with open(USER_DATA_FILE, 'rb') as file:
-            file_data = file.read()
-        encrypted_data = fernet.encrypt(file_data)
-        encrypted_path = ENC_USER_DATA_FILE
-        with open(encrypted_path, 'wb') as enc_file:
-            enc_file.write(encrypted_data)
-        if os.path.exists(USER_DATA_FILE):
-            secure_delete(USER_DATA_FILE)
-        else:
-            return None
-    except Exception as e:
-        print(f"[ERROR] User data ENC failed: {e}")
-        return None
-    return encrypted_path
-    
-# In use (LEGACY)
-def encrypt_vaultdata_file_legacy(password):
-    if not os.path.exists(VAULT_METADATA_FILE):
-        return None
-    data_salt = bytes.fromhex(USER_SYSTEM_SALT)
-    data_key = password
-    try:
-        jsonKey, _ = generate_key_legacy(data_key, data_salt)
-        fernet = Fernet(jsonKey)
-        with open(VAULT_METADATA_FILE, 'rb') as file:
-            file_data = file.read()
-        encrypted_data = fernet.encrypt(file_data)
-        encrypted_path = ENC_VAULT_METADATA_FILE
-        with open(encrypted_path, 'wb') as enc_file:
-            enc_file.write(encrypted_data)
-        if os.path.exists(VAULT_METADATA_FILE):
-            secure_delete(VAULT_METADATA_FILE)
-        else:
-            return None
-    except Exception as e:
-        print(f"[ERROR] Vault data ENC failed: {e}")
-        return None
-    return encrypted_path
-
-# In Use (LEGACY)
-def encrypt_passdata_file_legacy(password):
-    if not os.path.exists(PASS_METADATA_FILE):
-        return None
-    data_salt = bytes.fromhex(USER_SYSTEM_SALT)
-    data_key = password
-    try:
-        jsonKey, _ = generate_key_legacy(data_key, data_salt)
-        fernet = Fernet(jsonKey)
-        with open(PASS_METADATA_FILE, 'rb') as file:
-            file_data = file.read()
-        encrypted_data = fernet.encrypt(file_data)
-        encrypted_path = ENC_PASS_METADATA_FILE
-        with open(encrypted_path, 'wb') as enc_file:
-            enc_file.write(encrypted_data)
-        if os.path.exists(PASS_METADATA_FILE):
-            secure_delete(PASS_METADATA_FILE)
-        else:
-            return None
-    except Exception as e:
-        print(f"[ERROR] PM data ENC failed: {e}")
-        return None
-    return encrypted_path
-
-# In use (LEGACY)
-def decrypt_userdata_file_legacy(password):
-    if not os.path.exists(ENC_USER_DATA_FILE):
-        return None
-    decrypted_path = USER_DATA_FILE
-    data_salt = bytes.fromhex(USER_SYSTEM_SALT)
-    data_key = password
-    try:
-        jsonKey, _ = generate_key_legacy(data_key, data_salt)
-        fernet = Fernet(jsonKey)
-        with open(ENC_USER_DATA_FILE, 'rb') as enc_file:
-            encrypted_data = enc_file.read()
-        decrypted_data = fernet.decrypt(encrypted_data)
-        with open(decrypted_path, 'wb') as dec_file:
-            dec_file.write(decrypted_data)
-    except Exception as e:
-        print(f"[ERROR] User data DEC failed: {e}")
-        return None
-    return decrypted_path
-
-# In use (LEGACY)
-def decrypt_vaultdata_file_legacy(password):
-    if not os.path.exists(ENC_VAULT_METADATA_FILE):
-        return None
-    decrypted_path = VAULT_METADATA_FILE
-    data_salt = bytes.fromhex(USER_SYSTEM_SALT)
-    data_key = password
-    try:
-        jsonKey, _ = generate_key_legacy(data_key, data_salt)
-        fernet = Fernet(jsonKey)
-        with open(ENC_VAULT_METADATA_FILE, 'rb') as enc_file:
-            encrypted_data = enc_file.read()
-        decrypted_data = fernet.decrypt(encrypted_data)
-        with open(decrypted_path, 'wb') as dec_file:
-            dec_file.write(decrypted_data)
-    except Exception as e:
-        print(f"[ERROR] Vault data DEC failed: {e}")
-        return None
-    return decrypted_path
-
-# In Use (LEGACY)
-def decrypt_passdata_file_legacy(password):
-    if not os.path.exists(ENC_PASS_METADATA_FILE):
-        return None
-    decrypted_path = PASS_METADATA_FILE
-    data_salt = bytes.fromhex(USER_SYSTEM_SALT)
-    data_key = password
-    try:
-        jsonKey, _ = generate_key_legacy(data_key, data_salt)
-        fernet = Fernet(jsonKey)
-        with open(ENC_PASS_METADATA_FILE, 'rb') as enc_file:
-            encrypted_data = enc_file.read()
-        decrypted_data = fernet.decrypt(encrypted_data)
-        with open(decrypted_path, 'wb') as dec_file:
-            dec_file.write(decrypted_data)
-    except Exception as e:
-        print(f"[ERROR] PM data DEC failed: {e}")
-        return None
-    return decrypted_path
-
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
     if salt == None:
         salt = os.urandom(16)
+    elif isinstance(salt, str):
+        try:
+            salt = bytes.fromhex(salt)
+        except ValueError:
+            salt = salt.encode('utf-8')
 
     try:
         raw_key = argon2.low_level.hash_secret_raw(
@@ -628,7 +477,7 @@ def setup_recovery_codes(username, user_password):
             rec_enc_key, _, _ = generate_key(code, salt=code.encode())
             raw_key = base64.urlsafe_b64decode(rec_enc_key)
             aesgcm = AESGCM(raw_key)
-            nonce = os.urandom(16)
+            nonce = os.urandom(12)
             encrypted_pass = aesgcm.encrypt(nonce, user_password.encode('utf-8'), None)
             dat_name = f"recovery_{i}"
             dat_hash = hashlib.sha256(dat_name.encode()).hexdigest()
@@ -660,7 +509,7 @@ def recover_account_with_code(username, recovery_code):
 
     # Legacy
     try:
-        legacy_key, _ = generate_key_legacy(recovery_code, salt=recovery_code.encode())
+        legacy_key, _ = legacy.generate_key_legacy(recovery_code, salt=recovery_code.encode())
         fernet = Fernet(legacy_key)
     except Exception as e:
         print(f"[WARNING] Fernet recovery generation failed: {e}")
@@ -676,14 +525,14 @@ def recover_account_with_code(username, recovery_code):
                 try:
                     nonce = encrypted_data[:12]
                     ciphertext = encrypted_data[12:]
-                    decryprted_pass = aesgcm.decrypt(nonce, ciphertext, None)
-                    return decryprted_pass.decode('utf-8')
+                    decrypted_pass = aesgcm.decrypt(nonce, ciphertext, None)
+                    return decrypted_pass.decode('utf-8')
                 except Exception:
                     pass
             if fernet:
                 try:
-                 decryprted_pass = fernet.decrypt(encrypted_data)
-                 return decryprted_pass.decode('utf-8')
+                 decrypted_pass = fernet.decrypt(encrypted_data)
+                 return decrypted_pass.decode('utf-8')
                 except Exception:
                     pass
         except Exception:
@@ -845,7 +694,7 @@ def authenticate_user(username, password):
                 encrypt_userdata_file(enc_key)
                 return False
         # Legacy
-        if decrypt_userdata_file_legacy(password):
+        if legacy.decrypt_userdata_file_legacy(password):
             print("[INFO] Legacy account detected. Initiating migration...")
             if migrate_user_to_pqc(username, password):
                 reset_lockout(username)
@@ -857,16 +706,17 @@ def authenticate_user(username, password):
                 encrypt_userdata_file(enc_key)
                 return True
             else:
-                encrypt_userdata_file_legacy(password)
+                legacy.encrypt_userdata_file_legacy(password)
                 return False
+        print("[ERROR] User authentication failed.")
         return False
     except Exception as e:
         try: 
-            encrypt_userdata_file_legacy(password)
+            legacy.encrypt_userdata_file_legacy(password)
             encrypt_userdata_file(enc_key)
-        except: pass
-        print(f"[ERROR] User authentication failed: {e}")
-        return False
+        except:
+            print(f"[ERROR] User authentication failed: {e}")
+            return False
     
 # Migrate user
 def migrate_user_to_pqc(username, password):
@@ -885,7 +735,7 @@ def migrate_user_to_pqc(username, password):
             json.dump(user_data, f)
 
         if os.path.exists(ENC_VAULT_METADATA_FILE):
-            decrypt_vaultdata_file_legacy(password)
+            legacy.decrypt_vaultdata_file_legacy(password)
         if os.path.exists(VAULT_METADATA_FILE):
             encrypt_vaultdata_file(new_enc_key)
 
@@ -912,7 +762,7 @@ def get_lockout_data(username):
             data = json.load(f)
 
         payload = f"{data['attempts']}:{data['lock_until']}"
-        expected_sig = hmac.new(USER_SYSTEM_SALT.encode(), payload.encode, hashlib.sha256).hexdigest()
+        expected_sig = hmac.new(USER_SYSTEM_SALT.encode(), payload.encode(), hashlib.sha256).hexdigest()
 
         if data.get("signature") != expected_sig:
             print("[WARNING] Security file tampered! Applying harsh penalty.")
@@ -920,7 +770,8 @@ def get_lockout_data(username):
             return {"attempts": 99, "lock_until": time.time() + 86400}
         
         return data
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] get_lockout_data error: {e}")
         return {"attempts": 0, "lock_until": 0}
     
 def record_failed_attempt(username, penalty_override=None):
@@ -931,6 +782,9 @@ def record_failed_attempt(username, penalty_override=None):
     
     security_file = os.path.join(USER_DIR, "security.json")
     data = get_lockout_data(username)
+
+    if data["attempts"] >= 99:
+        return
 
     attempts = data["attempts"] + 1
 
@@ -1054,7 +908,7 @@ def authenticate_vault(vault_name, vault_password, user_password):
         outer_salt = bytes.fromhex(user_data["vaults"][vault_name]["outer_salt"])
         outer_key, _, _ = generate_key(vault_password, outer_salt)
 
-        enc_vault_name = hashlib.sha256(outer_key, vault_name.decode('utf-8')).hexdigest()
+        enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
         vault_path = os.path.join(VAULTS_DIR, enc_vault_name)
         enc_meta_path = os.path.join(vault_path, "vault_metadata.json.enc")
 
@@ -1111,7 +965,7 @@ def migrate_vault_files_to_pqc(vault_name, vault_password, legacy_key, vaults):
             new_path = os.path.join(new_vault_folder, new_enc_file_name)
             temp_path = os.path.join(TEMP_DIR, f_name)
 
-            decrypt_file_legacy(legacy_key, old_path, f_name, TEMP_DIR)
+            legacy.decrypt_file_legacy(legacy_key, old_path, f_name, TEMP_DIR)
             encrypt_file(new_enc_key, temp_path, new_path)
 
             secure_delete(temp_path)
@@ -1224,13 +1078,13 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username):
     encrypt_file(outer_key, temp_meta_path, enc_meta_path)
     secure_delete(temp_meta_path)
 
-def add_folder_recursive(vault_name, vault_key, folder_path, username, delete_original=False):
+def add_folder_recursive(vault_name, vault_keys, folder_path, username, delete_original=False):
     
     for root, _, files in os.walk(folder_path, topdown=False):
         for file in files:
             file_path = os.path.join(root, file)
             try:
-                add_file_to_vault(vault_name, vault_key, file_path, username)
+                add_file_to_vault(vault_name, vault_keys, file_path, username)
                 if delete_original:
                     secure_delete(file_path)
                 print(f"[INFO] Processed: {file}")
@@ -1397,7 +1251,7 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
             encrypt_passdata_file(enc_key)
             return False
         # LEGACY
-        if decrypt_passdata_file_legacy(passMngr_pass):
+        if legacy.decrypt_passdata_file_legacy(passMngr_pass):
             print("[INFO] Legacy Password Manager detected. Initiating migration...")
 
             if migrate_pm_to_pqc(passMngr_pass):
@@ -1406,12 +1260,12 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
                 encrypt_passdata_file(enc_key)
                 return True
             else:
-                encrypt_passdata_file_legacy(passMngr_pass)
+                legacy.encrypt_passdata_file_legacy(passMngr_pass)
                 return False
         return False
     except Exception as e:
         try: 
-            encrypt_passdata_file_legacy(passMngr_pass)
+            legacy.encrypt_passdata_file_legacy(passMngr_pass)
             encrypt_passdata_file(enc_key)
         except: pass
         print(f"[ERROR] Password Manager Authentication failed: {e}")

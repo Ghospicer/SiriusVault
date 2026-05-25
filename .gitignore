@@ -10,10 +10,13 @@ SiriusVault/temp/
 
 # Local Test Files
 TEST/
+test_backend.py
+test_gui.py
 
 # Python compile files
 __pycache__
 *.pyc
+.pytest_cache
 
 # PyInstaller
 build/
@@ -37,9 +40,8 @@ env/
 # DEV
 SiriusVaultDEV/
 # add readme and wip files to this folder!
+
 # README
 readme.md
 
-# Work in progress
-wip.txt
 
