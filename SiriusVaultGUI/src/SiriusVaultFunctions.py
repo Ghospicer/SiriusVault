@@ -1049,7 +1049,7 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username):
 
     file_name = os.path.basename(filepath)
     enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
-    encrypted_path = os.path.join(VAULTS_DIR, f"{enc_file_name}.enc")
+    encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
 
     encrypt_file(inner_key, filepath, encrypted_path)
 
@@ -1119,9 +1119,9 @@ def list_files_in_vault_GUI(vault_name, username, vault_keys):
     temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
 
     with open(temp_meta_path, 'r') as f:
-        vault_meta = json.laod(f)
+        vault_meta = json.load(f)
 
-    files = vault_name.get("files", [])
+    files = vault_meta.get("files", [])
 
     secure_delete(temp_meta_path)
     return files
@@ -1165,7 +1165,7 @@ def remove_file_from_vault(vault_name, file_name, username, vault_keys):
 # Extract file from vault
 def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path):
     if not is_session_active():
-        return
+        raise Exception("[ERROR] Session is not active!")
     reset_session_timer()
 
     outer_key = vault_keys["outer_key"]
@@ -1184,19 +1184,19 @@ def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path)
 
     file_metadata = next((file for file in vault_meta["files"] if file["name"].lower() == file_name.lower()), None)
     if not file_metadata:
-        return
+        raise Exception(f"[ERROR] File cannot find in the metadata: {file_name}")
     
     enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
     encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
 
     if not os.path.exists(encrypted_path):
-        return
+        raise Exception(f"[ERROR] Encrypted file is not on the disk! Searched Path: {encrypted_path}")
     
     enc_file_hash = calculate_file_hash(encrypted_path)
     stored_enc_file_hash = next((file["enc_hash"] for file in vault_meta["files"] if file["name"] == file_name), None)
     if enc_file_hash != stored_enc_file_hash:
         #print("Encrypted file corrupted!")
-        return
+        raise Exception(f"[ERROR] Encrypted File Corrupted! Expected Hash: {stored_enc_file_hash}, File Hash: {enc_file_hash}")
 
     decrypt_file(inner_key, encrypted_path, file_name, destination_path)
     decrypted_path = os.path.join(destination_path, f"{file_name}")
@@ -1204,7 +1204,7 @@ def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path)
     stored_file_hash = next((file["hash"] for file in vault_meta["files"] if file["name"] == file_name), None)
     if file_hash != stored_file_hash:
         #print("Decrypted file corrupted!")
-        return
+        raise Exception(f"[ERROR] Decrypted File Corrupted! Expected Hash: {stored_file_hash}, File Hash: {file_hash}")
 
 # Password Manager
 def create_passMngr(passMngr_pass, pass_Mngr=None):

@@ -10,6 +10,7 @@ SiriusVault/temp/
 
 # Local Test Files
 TEST/
+pytest.ini
 test_backend.py
 test_gui.py
 
