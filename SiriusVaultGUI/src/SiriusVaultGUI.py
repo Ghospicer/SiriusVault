@@ -446,11 +446,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def load_pm_table(self):
         self.table_pm_list.setRowCount(0)
         
-        try:
-            backend.decrypt_passdata_file(self.master_pm_password)
-            services = backend.list_services_in_passMngr()
-        finally:
-            backend.encrypt_passdata_file(self.master_pm_password)
+        services = backend.list_services_in_passMngr()
             
         if not services: return
 
@@ -547,17 +543,15 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def delete_pm_service(self, service_name):
         reply = QMessageBox.question(self, "Delete", f"Remove '{service_name}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
-            try:
-                backend.decrypt_passdata_file(self.master_pm_password)
-                backend.remove_password_service(service_name)
-            finally:
-                backend.encrypt_passdata_file(self.master_pm_password)
+            
+            backend.remove_password_service(service_name)
+
             self.load_pm_table()
 
     def logout_pm_only(self):
+        backend.logout_passMngr()
         if hasattr(self, 'master_pm_password'):
-            if os.path.exists(backend.PASS_METADATA_FILE):
-                backend.encrypt_passdata_file(self.master_pm_password)
+            self.master_pm_password = None
         clear_sensitive_clipboard()
         self.stack_pass_manager.setCurrentIndex(0) 
 
@@ -618,8 +612,6 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         confirm = QMessageBox.warning(self, "DANGER", "All data will be lost.\nProceed?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             try:
-                backend.decrypt_userdata_file(self.user_password)
-                backend.decrypt_vaultdata_file(self.user_password)
                 backend.delete_user(self.current_user, self.user_password)
             except Exception as e:
                 print(f"Error during deletion: {e}")
@@ -646,12 +638,6 @@ class MainMenuWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         print("[INFO] Cleaning up and encrypting data...")
-        if os.path.exists(backend.USER_DATA_FILE):
-            backend.encrypt_userdata_file(self.user_password)
-        if os.path.exists(backend.VAULT_METADATA_FILE):
-            backend.encrypt_vaultdata_file(self.user_password)
-        if hasattr(self, 'master_pm_password') and os.path.exists(backend.PASS_METADATA_FILE):
-            backend.encrypt_passdata_file(self.master_pm_password)
         
         backend.logout_user()
 
@@ -935,12 +921,8 @@ class AddPasswordDialog(QtWidgets.QDialog):
             QMessageBox.warning(self, "Error", "Passwords do not match.")
             return
         
-        # [DEC -> OP -> ENC]
-        try:
-            backend.decrypt_passdata_file(self.master_password)
-            backend.add_password_to_PassMngr(s_name, s_user_mail, s_pass)
-        finally:
-            backend.encrypt_passdata_file(self.master_password)
+        backend.add_password_to_PassMngr(s_name, s_user_mail, s_pass)
+        
         self.accept()
 
 class AuthCheckDialog(QtWidgets.QDialog):
@@ -962,14 +944,9 @@ class AuthCheckDialog(QtWidgets.QDialog):
     def check_master_pass(self):
         mp = self.input_dialog_reqP_masterP.text()
         
-        # [DEC -> OP -> ENC]
-        try:
-            backend.decrypt_passdata_file(self.master_password)
-            auth_ok = backend.authenticate_passMngr(mp)
-            if auth_ok:
-                raw_pass = backend.extract_password_service(self.service_name)
-        finally:
-            backend.encrypt_passdata_file(self.master_password)
+        auth_ok = backend.authenticate_passMngr(mp)
+        if auth_ok:
+            raw_pass = backend.extract_password_service(self.service_name)
 
         if auth_ok:
             self.show_revealed_password(raw_pass)

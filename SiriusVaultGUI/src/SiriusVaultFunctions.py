@@ -79,18 +79,20 @@ def update_user_timeout_setting(username, password, new_index):
     if not os.path.exists(ENC_USER_DATA_FILE):
         print("User data file not encrypted.")
         return False
+    global USER_SYSTEM_SALT
+    enc_key, _, _ = generate_key(password, USER_SYSTEM_SALT)
     try:
-        decrypt_userdata_file(password)
+        decrypt_userdata_file(enc_key)
         with open(USER_DATA_FILE, 'r') as f:
             user_data = json.load(f)
         user_data["session_timeout_index"] = new_index
         with open(USER_DATA_FILE, 'w') as f:
             json.dump(user_data, f)
         reset_session_timer()
-        encrypt_userdata_file(password)
+        encrypt_userdata_file(enc_key)
         return True
     except Exception as e:
-        encrypt_userdata_file(password)
+        encrypt_userdata_file(enc_key)
         print(f"Session timeout setting not saved: {e}")
         return False
 
@@ -148,6 +150,27 @@ def secure_delete(filepath, passes=3):
         try: os.remove(filepath)
         except: pass
         return False
+    
+def secure_rmtree(directory_path):
+    if not os.path.exists(directory_path):
+        return
+    
+    for root, dirs, files in os.walk(directory_path, topdown=False):
+        for name in files:
+            file_path = os.path.join(root, name)
+            secure_delete(file_path)
+
+        for name in dirs:
+            dir_path = os.path.join(root, name)
+            try:
+                os.rmdir(dir_path)
+            except:
+                pass
+
+    try:
+        os.rmdir(directory_path)
+    except:
+        pass
 
 def logout_user():
     global session_timer
@@ -155,8 +178,19 @@ def logout_user():
         session_timer.cancel()
     session["authenticated_user"] = None
     session["session_expiry"] = None
+    session["pm_inner_key"] = None
+    session["pm_outer_key"] = None
     clean_memory()
     print("\nSession ended. Please authenticate again.")
+    return True
+
+def logout_passMngr():
+    if "pm_outer_key" in session:
+        session["pm_outer_key"] = None
+    if "pm_inner_key" in session:
+        session["pm_inner_key"] = None
+
+    print("[INFO] Password Manager session keys wiped from memory.")
     return True
 
 def exit_program():
@@ -379,6 +413,32 @@ def decrypt_file(enc_key_b64, encrypted_filepath, filename, destination_path):
             chunk_index += 1
         
     return decrypted_path
+
+# In use
+def encrypt_text(enc_key_b64, plaintext):
+    raw_key = base64.urlsafe_b64decode(enc_key_b64)
+    aesgcm = AESGCM(raw_key)
+    nonce = os.urandom(12)
+    try:
+        ciphertext = aesgcm.encrypt(nonce, plaintext.encode('utf-8'), None)
+        return base64.b64encode(nonce + ciphertext).decode('utf-8')
+    except Exception as e:
+        print(f"[ERROR] Ciphertext cannot encrypted: {e}")
+        return None
+
+# In use
+def decrypt_text(enc_key_b64, encrypted_b64_string):
+    raw_key = base64.urlsafe_b64decode(enc_key_b64)
+    aesgcm = AESGCM(raw_key)
+    data = base64.b64decode(encrypted_b64_string)
+    nonce = data[:12]
+    ciphertext = data[12:]
+    try:
+        decrypted_text = aesgcm.decrypt(nonce, ciphertext, None)
+        return decrypted_text.decode('utf-8')
+    except Exception as e:
+        print(f"[ERROR] Ciphertext cannot decrypted: {e}")
+        return None
 
 # In use
 def encrypt_userdata_file(enc_key):
@@ -816,7 +876,7 @@ def delete_user(username, user_password):
     if authenticate_user(username, user_password):
         if os.path.exists(USER_DIR):
             try:
-                shutil.rmtree(USER_DIR)
+                secure_rmtree(USER_DIR)
                 if not os.path.exists(USER_DIR):
                     print("User and all associated vaults deleted successfully!")
                     print("Good Bye!")
@@ -1027,7 +1087,7 @@ def delete_vault(username, vault_name, vault_keys, user_password):
         vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
         
         if os.path.exists(vault_folder):
-            shutil.rmtree(vault_folder)
+            secure_rmtree(vault_folder)
     finally:
         encrypt_userdata_file(master_enc_key)
 
@@ -1211,6 +1271,7 @@ def create_passMngr(passMngr_pass, pass_Mngr=None):
     if not is_session_active():
         return
     reset_session_timer()
+    global USER_SYSTEM_SALT
     #Create PASS_METADA_FILE
     try:
         if not os.path.exists(PASS_METADATA_FILE):
@@ -1219,12 +1280,17 @@ def create_passMngr(passMngr_pass, pass_Mngr=None):
         pass_Mngr = "Sirius Password Manager"
         with open(PASS_METADATA_FILE, 'r') as f:
             pass_Mngrs = json.load(f)
-        passMngr_key, passMngr_auth_hash, passMngr_salt = generate_key(passMngr_pass)
-        pass_Mngrs[pass_Mngr] = {"password_hash": passMngr_auth_hash.decode('utf-8'), "salt": passMngr_salt.hex(), "services": []}
+        USER_SYSTEM_SALT = initialize_user_system_salt()
+        outer_salt = USER_SYSTEM_SALT
+        pm_outer_key, _, _ = generate_key(passMngr_pass, outer_salt)
+        inner_key, passMngr_auth_hash, inner_salt = generate_key(passMngr_pass)
+        pass_Mngrs[pass_Mngr] = {"auth_hash": passMngr_auth_hash.decode('utf-8'),
+                                 "inner_salt": inner_salt.hex(),
+                                 "services": []}
         with open(PASS_METADATA_FILE, 'w') as f:
             json.dump(pass_Mngrs, f)
-        session["pm_enc_key"] = passMngr_key
-        encrypt_passdata_file(passMngr_key)
+        session["pm_outer_key"] = pm_outer_key
+        encrypt_passdata_file(pm_outer_key)
         return True
     except Exception as e:
         print(f"[ERROR] Password Manager Creation failed: {e}")
@@ -1234,30 +1300,37 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
     if not is_session_active():
         return False
     reset_session_timer()
-    if not os.path.exists(PASS_METADATA_FILE):
+    global USER_SYSTEM_SALT
+    if not os.path.exists(ENC_PASS_METADATA_FILE):
+        print("Password Manager for User not created.")
         return False
     USER_SYSTEM_SALT = initialize_user_system_salt()
-    enc_key, auth_hash, _ = generate_key(passMngr_pass, USER_SYSTEM_SALT)
+    outer_key, _, _ = generate_key(passMngr_pass, USER_SYSTEM_SALT)
     try:
-        if decrypt_passdata_file(enc_key):
+        if decrypt_passdata_file(outer_key):
             with open(PASS_METADATA_FILE, 'r') as f:
                 pass_Mngrs = json.load(f)
             pass_Mngr = "Sirius Password Manager"
             if pass_Mngr in pass_Mngrs:
-                stored_hash = pass_Mngrs[pass_Mngr].get("password_hash")
+                stored_salt = bytes.fromhex(pass_Mngrs[pass_Mngr].get("inner_salt"))
+                inner_key, auth_hash, _ = generate_key(passMngr_pass, stored_salt)
+                stored_hash = pass_Mngrs[pass_Mngr].get("auth_hash")
                 if stored_hash == auth_hash.decode('utf-8'):
-                    session["pm_enc_key"] = enc_key
+                    encrypt_passdata_file(outer_key)
+                    session["pm_outer_key"] = outer_key
+                    session["pm_inner_key"] = inner_key
                     return True
-            encrypt_passdata_file(enc_key)
+            encrypt_passdata_file(outer_key)
             return False
         # LEGACY
         if legacy.decrypt_passdata_file_legacy(passMngr_pass):
             print("[INFO] Legacy Password Manager detected. Initiating migration...")
 
             if migrate_pm_to_pqc(passMngr_pass):
-                session["pm_enc_key"] = enc_key
+                session["pm_outer_key"] = outer_key
+                session["pm_inner_key"] = inner_key
                 reset_session_timer()
-                encrypt_passdata_file(enc_key)
+                encrypt_passdata_file(outer_key)
                 return True
             else:
                 legacy.encrypt_passdata_file_legacy(passMngr_pass)
@@ -1266,7 +1339,7 @@ def authenticate_passMngr(passMngr_pass, pass_Mngr=None):
     except Exception as e:
         try: 
             legacy.encrypt_passdata_file_legacy(passMngr_pass)
-            encrypt_passdata_file(enc_key)
+            encrypt_passdata_file(outer_key)
         except: pass
         print(f"[ERROR] Password Manager Authentication failed: {e}")
         return False
@@ -1296,31 +1369,49 @@ def add_password_to_PassMngr(service_name, service_user_mail, service_pass, pass
     if not is_session_active():
         return
     reset_session_timer()
-    pass_Mngr = "Sirius Password Manager"
-    with open(PASS_METADATA_FILE, 'r') as f:
-        pass_Mngrs = json.load(f)
-    service_metadata = {
-        "service_name": service_name,
-        "service_user_mail": service_user_mail,
-        "service_pass": service_pass
-    }
-    pass_Mngrs[pass_Mngr]["services"].append(service_metadata)
-    with open(PASS_METADATA_FILE, 'w') as f:
-        json.dump(pass_Mngrs, f)
+
+    pm_outer_key = session.get("pm_outer_key")
+    pm_inner_key = session.get("pm_inner_key")
+
+    if not pm_outer_key or not decrypt_passdata_file(pm_outer_key):
+        return None
+    try:
+        pass_Mngr = "Sirius Password Manager"
+        with open(PASS_METADATA_FILE, 'r') as f:
+            pass_Mngrs = json.load(f)
+        encrypted_service_pass = encrypt_text(pm_inner_key, service_pass)
+        service_metadata = {
+            "service_name": service_name,
+            "service_user_mail": service_user_mail,
+            "service_pass": encrypted_service_pass
+        }
+        pass_Mngrs[pass_Mngr]["services"].append(service_metadata)
+        with open(PASS_METADATA_FILE, 'w') as f:
+            json.dump(pass_Mngrs, f)
+    finally:
+        encrypt_passdata_file(pm_outer_key)
 
 # List Services in PassMngr
 def list_services_in_passMngr(pass_Mngr=None):
     if not is_session_active():
         return
     reset_session_timer()
-    pass_Mngr = "Sirius Password Manager"
-    with open(PASS_METADATA_FILE, 'r') as f:
-        pass_Mngrs = json.load(f)
-    if pass_Mngr not in pass_Mngrs:
-        print("Incorrect Password Manager or Password!")
-        return
-    services = pass_Mngrs[pass_Mngr]["services"]
-    return services
+
+    pm_outer_key = session.get("pm_outer_key")
+    
+    if not pm_outer_key or not decrypt_passdata_file(pm_outer_key):
+        return None
+    try:
+        pass_Mngr = "Sirius Password Manager"
+        with open(PASS_METADATA_FILE, 'r') as f:
+            pass_Mngrs = json.load(f)
+        if pass_Mngr not in pass_Mngrs:
+            print("Incorrect Password Manager or Password!")
+            return
+        services = pass_Mngrs[pass_Mngr]["services"]
+        return services
+    finally:
+        encrypt_passdata_file(pm_outer_key)
 
 # Audit Password Strenght
 def audit_password_strenght(password):
@@ -1348,43 +1439,57 @@ def extract_password_service(service_name, pass_Mngr=None):
     if not is_session_active():
         return
     reset_session_timer()
-    pass_Mngr = "Sirius Password Manager"
-    with open(PASS_METADATA_FILE, 'r') as f:
-        pass_Mngrs = json.load(f)
-    service_metadata = next((services for services in pass_Mngrs[pass_Mngr]["services"] if services["service_name"].lower() == service_name.lower()), None)
-    if not service_metadata:
-        print("Service not found! Check the list and try again.")
-        return
-    service_pass = next((services["service_pass"] for services in pass_Mngrs[pass_Mngr]["services"] if services["service_name"] == service_name), None)
-    # print(f"Password for service: {service_name}")
-    # print(f"{service_pass}")
-    return service_pass
 
+    pm_outer_key = session.get("pm_outer_key")
+    pm_inner_key = session.get("pm_inner_key")
+
+    if not pm_outer_key or not decrypt_passdata_file(pm_outer_key):
+        return None
+    try:
+        pass_Mngr = "Sirius Password Manager"
+        with open(PASS_METADATA_FILE, 'r') as f:
+            pass_Mngrs = json.load(f)
+        service_metadata = next((services for services in pass_Mngrs[pass_Mngr]["services"] if services["service_name"].lower() == service_name.lower()), None)
+        if not service_metadata:
+            print("Service not found! Check the list and try again.")
+            return None
+        decrypted_pass = decrypt_text(pm_inner_key, service_metadata["service_pass"])
+        return decrypted_pass
+    finally:
+        encrypt_passdata_file(pm_outer_key)
 
 # Remove Password for service
 def remove_password_service(service_name, pass_Mngr=None):
     if not is_session_active():
         return
     reset_session_timer()
-    pass_Mngr = "Sirius Password Manager"
-    with open(PASS_METADATA_FILE, 'r') as f:
-        pass_Mngrs = json.load(f)
-    service_metadata = next((services for services in pass_Mngrs[pass_Mngr]["services"] if services["service_name"] == service_name), None)
-    if not service_metadata:
-        return False
-    pass_Mngrs[pass_Mngr]["services"].remove(service_metadata)
-    with open(PASS_METADATA_FILE, 'w') as f:
-        json.dump(pass_Mngrs, f)
-    return True
+
+    pm_outer_key = session.get("pm_outer_key")
+
+    if not pm_outer_key or not decrypt_passdata_file(pm_outer_key):
+        return None
+    try:
+        pass_Mngr = "Sirius Password Manager"
+        with open(PASS_METADATA_FILE, 'r') as f:
+            pass_Mngrs = json.load(f)
+        service_metadata = next((services for services in pass_Mngrs[pass_Mngr]["services"] if services["service_name"] == service_name), None)
+        if not service_metadata:
+            return False
+        pass_Mngrs[pass_Mngr]["services"].remove(service_metadata)
+        with open(PASS_METADATA_FILE, 'w') as f:
+            json.dump(pass_Mngrs, f)
+        return True
+    finally:
+        encrypt_passdata_file(pm_outer_key)
 
 # Delete Password Manager
 def delete_passMngr(username, user_password):
     load_user_context(username)
     if authenticate_user(username, user_password):
         if os.path.exists(PASS_METADATA_FILE):
-            os.remove(PASS_METADATA_FILE)
+            secure_delete(PASS_METADATA_FILE)
         if os.path.exists(ENC_PASS_METADATA_FILE):
-            os.remove(ENC_PASS_METADATA_FILE)
+            secure_delete(ENC_PASS_METADATA_FILE)
 
         if not os.path.exists(PASS_METADATA_FILE) and not os.path.exists(ENC_PASS_METADATA_FILE):
             print("Password Manager deleted successfuly!")
