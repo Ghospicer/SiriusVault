@@ -96,6 +96,16 @@ def clear_sensitive_clipboard():
     
     last_copied_sensitive_data = None
 
+class JumpSlider(QtWidgets.QSlider):
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            click_x = event.position().x()
+            val = self.minimum() + ((self.maximum() - self.minimum()) * click_x) / self.width()
+            self.setValue(int(val))
+            self.sliderMoved.emit(int(val))
+            
+        super().mousePressEvent(event)
+
 # =============================================================================
 # 1. LOGIN WINDOW (Login, Register, USB Selection)
 # =============================================================================
@@ -744,6 +754,7 @@ class VaultMenuWindow(QtWidgets.QWidget):
             btn_del.setStyleSheet("background-color: #f38ba8; border: none; border-radius: 4px;")
             btn_del.clicked.connect(lambda _, n=f_name: self.delete_file(n))
 
+            layout.addWidget(btn_view)
             layout.addWidget(btn_ext)
             layout.addWidget(btn_del)
             layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1105,6 +1116,11 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
         self.audio_output = None
         self.video_widget = None
 
+        self.control_layout = None
+        self.btn_play_pause = None
+        self.slider_progress = None
+        self.lbl_time = None
+
         self.load_content()
 
     def load_content(self):
@@ -1115,6 +1131,7 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
 
         ext = os.path.splitext(self.file_name)[1].lower()
 
+        # Text Files
         if mime_type.startswith('text/') or ext in ['.py', '.json', '.log', '.ini', '.csv', '.env']:
             self.stackedWidget_viewer.setCurrentIndex(0)
             if hasattr(self, 'lbl_file_name'):
@@ -1126,6 +1143,7 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
             except:
                 with open(self.temp_path, 'r', encoding='iso-8859-1') as f:
                     self.textEdit_viewer.setText(f.read())
+        # Image Files
         elif mime_type.startswith('image/'):
             self.stackedWidget_viewer.setCurrentIndex(1)
             if hasattr(self, 'lbl_file_name'):
@@ -1138,6 +1156,7 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
                 Qt.TransformationMode.SmoothTransformation
             )
             self.lbl_image_viewer.setPixmap(scaled_pixmap)
+        # Video/Audio Files
         elif mime_type.startswith('video/') or mime_type.startswith('audio/'):
             self.stackedWidget_viewer.setCurrentIndex(2)
             self.player = QMediaPlayer()
@@ -1149,12 +1168,39 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
                     self.lbl_file_name.setText("Video playing on safe mode")
                     self.lbl_file_name.setStyleSheet("font-weight: bold; color: #89b4fa;")
                 self.video_widget = QVideoWidget()
-                self.layout_media.addWidget(self.video_widget)
+                self.layout_media.addWidget(self.video_widget, stretch=1)
                 self.player.setVideoOutput(self.video_widget)
             else:
                 if hasattr(self, 'lbl_file_name'):
                     self.lbl_file_name.setText("Audio file playing on safe mode")
                     self.lbl_file_name.setStyleSheet("font-size: 14px; font-weight: bold; color: #a6e3a1;")
+                lbl_space = QtWidgets.QLabel("", self)
+                self.layout_media.addWidget(lbl_space, stretch=1)
+
+            self.control_layout = QtWidgets.QHBoxLayout()
+
+            self.btn_play_pause = QtWidgets.QPushButton("⏸️")
+            self.btn_play_pause.setFixedSize(40, 30)
+            self.btn_play_pause.setStyleSheet("background-color: #313244; color: white; border-radius: 4px;")
+            self.btn_play_pause.clicked.connect(self.toggle_play_pause)
+
+            self.slider_progress = JumpSlider(Qt.Orientation.Horizontal)
+            self.slider_progress.setMaximumHeight(20)
+            self.slider_progress.setStyleSheet("QSlider::handle:horizontal { background: #89b4fa; border-radius: 5px; width: 10px; }")
+            self.slider_progress.sliderMoved.connect(self.set_media_position)
+
+            self.lbl_time = QtWidgets.QLabel("00:00 / 00:00")
+            self.lbl_time.setMaximumHeight(20)
+            self.lbl_time.setStyleSheet("color: #cdd6f4; font-weight: bold;")
+
+            self.control_layout.addWidget(self.btn_play_pause)
+            self.control_layout.addWidget(self.slider_progress)
+            self.control_layout.addWidget(self.lbl_time)
+            self.layout_media.addLayout(self.control_layout, stretch=0)
+
+            self.player.positionChanged.connect(self.update_slider_position)
+            self.player.durationChanged.connect(self.update_slider_duration)
+            self.player.playbackStateChanged.connect(self.update_play_button_state)
 
             media_url = QUrl.fromLocalFile(self.temp_path)
             self.player.setSource(media_url)
@@ -1167,6 +1213,40 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
             self.lbl_image_viewer.setText(
                 f"No built-in preview supported for files with extension '{ext}'.\n"
             )
+
+    def toggle_play_pause(self):
+        if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.player.pause()
+        else:
+            self.player.play()
+
+    def update_play_button_state(self, state):
+        if state == QMediaPlayer.PlaybackState.PlayingState:
+            self.btn_play_pause.setText("⏸️")
+        else:
+            self.btn_play_pause.setText("▶️")
+
+    def update_slider_position(self, position):
+        self.slider_progress.setValue(position)
+        self.update_time_label(position, self.player.duration())
+
+    def update_slider_duration(self, duration):
+        self.slider_progress.setRange(0, duration)
+        self.update_time_label(self.player.position(), duration)
+
+    def set_media_position(self, position):
+        self.player.setPosition(position)
+
+    def update_time_label(self, position, duration):
+        def format_time(ms):
+            total_seconds = round(ms / 1000)
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours > 0:
+                return f"{hours:02}:{minutes:02}:{seconds:02}"
+            else:
+                return f"{minutes:02}:{seconds:02}"
+        self.lbl_time.setText(f"{format_time(position)} / {format_time(duration)}")
 
     def closeEvent(self, event):
         if self.player:
