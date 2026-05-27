@@ -1179,10 +1179,20 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
 
             self.control_layout = QtWidgets.QHBoxLayout()
 
+            self.btn_skip_back = QtWidgets.QPushButton("⏪")
+            self.btn_skip_back.setFixedSize(30, 30)
+            self.btn_skip_back.setStyleSheet("background-color: #313244; color: white; border-radius: 4px;")
+            self.btn_skip_back.clicked.connect(self.skip_backward)
+
             self.btn_play_pause = QtWidgets.QPushButton("⏸️")
             self.btn_play_pause.setFixedSize(40, 30)
             self.btn_play_pause.setStyleSheet("background-color: #313244; color: white; border-radius: 4px;")
             self.btn_play_pause.clicked.connect(self.toggle_play_pause)
+
+            self.btn_skip_forward = QtWidgets.QPushButton("⏩")
+            self.btn_skip_forward.setFixedSize(30, 30)
+            self.btn_skip_forward.setStyleSheet("background-color: #313244; color: white; border-radius: 4px;")
+            self.btn_skip_forward.clicked.connect(self.skip_forward)
 
             self.slider_progress = JumpSlider(Qt.Orientation.Horizontal)
             self.slider_progress.setMaximumHeight(20)
@@ -1193,9 +1203,26 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
             self.lbl_time.setMaximumHeight(20)
             self.lbl_time.setStyleSheet("color: #cdd6f4; font-weight: bold;")
 
+            self.lbl_volume = QtWidgets.QLabel("🔊")
+            self.lbl_volume.setStyleSheet("color: #cdd6f4;")
+            self.lbl_volume.setMaximumHeight(20)
+
+            self.slider_volume = JumpSlider(Qt.Orientation.Horizontal)
+            self.slider_volume.setRange(0, 100)
+            self.slider_volume.setValue(50)
+            self.slider_volume.setMaximumWidth(80)
+            self.slider_volume.setMaximumHeight(20)
+            self.slider_volume.setStyleSheet("QSlider::handle:horizontal { background: #a6e3a1; border-radius: 5px; width: 10px; }")
+            self.slider_volume.valueChanged.connect(self.set_volume)
+            self.audio_output.setVolume(0.5)
+
+            self.control_layout.addWidget(self.btn_skip_back)
             self.control_layout.addWidget(self.btn_play_pause)
+            self.control_layout.addWidget(self.btn_skip_forward)
             self.control_layout.addWidget(self.slider_progress)
             self.control_layout.addWidget(self.lbl_time)
+            self.control_layout.addWidget(self.lbl_volume)
+            self.control_layout.addWidget(self.slider_volume)
             self.layout_media.addLayout(self.control_layout, stretch=0)
 
             self.player.positionChanged.connect(self.update_slider_position)
@@ -1214,6 +1241,10 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
                 f"No built-in preview supported for files with extension '{ext}'.\n"
             )
 
+    def skip_backward(self):
+        new_position = max(0, self.player.position() - 10000)
+        self.player.setPosition(new_position)
+
     def toggle_play_pause(self):
         if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player.pause()
@@ -1225,6 +1256,10 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
             self.btn_play_pause.setText("⏸️")
         else:
             self.btn_play_pause.setText("▶️")
+
+    def skip_forward(self):
+        new_position = min(self.player.duration(), self.player.position() + 10000)
+        self.player.setPosition(new_position)
 
     def update_slider_position(self, position):
         self.slider_progress.setValue(position)
@@ -1247,6 +1282,17 @@ class MultimediaManagerDialog(QtWidgets.QDialog):
             else:
                 return f"{minutes:02}:{seconds:02}"
         self.lbl_time.setText(f"{format_time(position)} / {format_time(duration)}")
+
+    def set_volume(self, value):
+        volume_float = value / 100.0
+        self.audio_output.setVolume(volume_float)
+
+        if value == 0:
+            self.lbl_volume.setText("🔇")
+        elif value < 50:
+            self.lbl_volume.setText("🔉")
+        else:
+            self.lbl_volume.setText("🔊")
 
     def closeEvent(self, event):
         if self.player:
