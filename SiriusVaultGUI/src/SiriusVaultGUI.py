@@ -66,13 +66,16 @@ def secure_copy_to_clipboard(sensitive_text):
     mime_data = QMimeData()
     mime_data.setText(sensitive_text)
 
+    dword_zero = b'\x00\x00\x00\x00'
+
     #Win10/11
-    mime_data.setData("ExcludeClipboardContentFromMonitorUI", b'\x00')
-    mime_data.setData("CanIncludeInClipboardHistory", b'\x00')
-    mime_data.setData("CanUploadToCloudClipboard", b'\x00')
+    mime_data.setData("ExcludeClipboardContentFromMonitorUI", dword_zero)
+    mime_data.setData("ExcludeClipboardContentFromMonitorProcessing", dword_zero)
+    mime_data.setData("CanIncludeInClipboardHistory", dword_zero)
+    mime_data.setData("CanUploadToCloudClipboard", dword_zero)
 
     #macOS
-    mime_data.setData("org.nspasteboard.ConcealedType", b'\x00')
+    mime_data.setData("org.nspasteboard.ConcealedType", dword_zero)
 
     QApplication.clipboard().setMimeData(mime_data)
     last_copied_sensitive_data = sensitive_text
@@ -80,10 +83,12 @@ def secure_copy_to_clipboard(sensitive_text):
     if clipboard_timer:
         clipboard_timer.stop()
     
-    clipboard_timer = QTimer()
+    clipboard_timer = QtCore.QTimer()
     clipboard_timer.setSingleShot(True)
     clipboard_timer.timeout.connect(clear_sensitive_clipboard)
     clipboard_timer.start(30000) #30s
+
+    print("[INFO] Sensitive data copied to clipboard with DWORD Zero.")
 
 def clear_sensitive_clipboard():
     global last_copied_sensitive_data
@@ -653,6 +658,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         print("[INFO] Cleaning up and encrypting data...")
         
         backend.logout_user()
+        clear_sensitive_clipboard()
 
         if self.is_logging_out:
             self.login_window = LoginWindow()

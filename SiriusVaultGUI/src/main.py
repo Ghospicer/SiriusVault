@@ -2,7 +2,7 @@ import sys
 import SiriusVaultFunctions as backend
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt, QObject, QEvent
-from SiriusVaultGUI import LoginWindow
+from SiriusVaultGUI import LoginWindow, clear_sensitive_clipboard
 
 class InactivityFilter(QObject):
     def eventFilter(self, obj, event):
@@ -22,6 +22,8 @@ def main():
 
     inactivity_filter = InactivityFilter()
     app.installEventFilter(inactivity_filter)
+
+    app.aboutToQuit.connect(clear_sensitive_clipboard)
 
     window = LoginWindow()
     window.show()

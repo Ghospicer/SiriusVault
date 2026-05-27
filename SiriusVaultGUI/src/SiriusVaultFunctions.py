@@ -1277,13 +1277,14 @@ def create_passMngr(passMngr_pass, pass_Mngr=None):
         USER_SYSTEM_SALT = initialize_user_system_salt()
         outer_salt = USER_SYSTEM_SALT
         pm_outer_key, _, _ = generate_key(passMngr_pass, outer_salt)
-        inner_key, passMngr_auth_hash, inner_salt = generate_key(passMngr_pass)
+        pm_inner_key, passMngr_auth_hash, inner_salt = generate_key(passMngr_pass)
         pass_Mngrs[pass_Mngr] = {"auth_hash": passMngr_auth_hash.decode('utf-8'),
                                  "inner_salt": inner_salt.hex(),
                                  "services": []}
         with open(PASS_METADATA_FILE, 'w') as f:
             json.dump(pass_Mngrs, f)
         session["pm_outer_key"] = pm_outer_key
+        session["pm_inner_key"] = pm_inner_key
         encrypt_passdata_file(pm_outer_key)
         return True
     except Exception as e:
