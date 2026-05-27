@@ -599,40 +599,34 @@ def recover_account_with_code(username, recovery_code):
             continue
     return None
 
-# Multimedia Manager (Terminal version. Not for GUI)
-def multimedia_manager(vault_name, vault_key, file_name):
+# Multimedia Manager (Test for GUI)
+def multimedia_manager(vault_name, vault_keys, file_name):
+    if not is_session_active():
+        return None
+    reset_session_timer()
+
+    outer_key = vault_keys["outer_key"]
+    inner_key = vault_keys["inner_key"]
+
+    enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
+    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
+
+    enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
+    encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
+
+    if not os.path.exists(encrypted_path):
+        print(f"[ERROR] Encrypted file not found: {encrypted_path}")
+        return None
+    
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
-    enc_vault_name = hashlib.sha256(vault_key + vault_name.encode('utf-8')).hexdigest()
-    vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
-    enc_file_name = hashlib.sha256(vault_key + file_name.encode('utf-8')).hexdigest()
-    encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
-    fernet = Fernet(vault_key)
-    with open(encrypted_path, 'rb') as enc_file:
-        encrypted_data = enc_file.read()
-    decrypted_data = fernet.decrypt(encrypted_data)
-    file_type, _ = mimetypes.guess_type(file_name)
-    if file_type:
-        if file_type.startswith("image/"):
-            img_buffer = io.BytesIO(decrypted_data)
-            img_buffer.seek(0)
-            image = Image.open(img_buffer)
-            img_form = image.format
-            if not img_form:
-                print("Unknown Image format.")
-            else:
-                image.show()
-        elif file_type.startswith("video/"):
-            print("Under Cons.")
-        elif file_type.startswith("application/") or file_type.startswith("text/"):
-            print("Under Cons.")
-        elif file_type.startswith("audio/"):
-            print("Under Cons.")
-        else:
-            print("Unknown file type.")
-    else:
-        print("Unknown file type.")
-    return
+
+    try:
+        decrypted_path = decrypt_file(inner_key, encrypted_path, file_name, TEMP_DIR)
+        return decrypted_path
+    except Exception as e:
+        print(f"[ERROR] Multimedia Manager decryption error: {e}")
+        return None
 
 # In use
 def calculate_file_hash(filepath):

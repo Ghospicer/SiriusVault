@@ -2,10 +2,13 @@ import sys
 import os
 import time
 import shutil
+import mimetypes
 from PyQt6 import QtWidgets, uic, QtCore, QtGui
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QTableWidgetItem, QHeaderView, QWidget, QHBoxLayout, QPushButton, QApplication, QAbstractItemView, QLineEdit
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor, QFont
-from PyQt6.QtCore import Qt, QTimer, QMimeData
+from PyQt6.QtCore import Qt, QTimer, QMimeData, QUrl
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtMultimediaWidgets import QVideoWidget
 
 # Globals
 clipboard_timer = None
@@ -722,6 +725,12 @@ class VaultMenuWindow(QtWidgets.QWidget):
             action_widget = QWidget()
             layout = QHBoxLayout(action_widget)
             layout.setContentsMargins(0,0,0,0)
+
+            btn_view = QPushButton("👁️")
+            btn_view.setToolTip("Güvenli Önizleme")
+            btn_view.setFixedSize(30, 25)
+            btn_view.setStyleSheet("background-color: #a6e3a1; border: none; border-radius: 4px; color: #1e1e2e;")
+            btn_view.clicked.connect(lambda _, n=f_name: self.preview_file(n))
             
             btn_ext = QPushButton("📤")
             btn_ext.setToolTip("Extract")
@@ -771,6 +780,16 @@ class VaultMenuWindow(QtWidgets.QWidget):
 
     def process_file_import(self, filepath):
         backend.add_file_to_vault(self.vault_name, self.vault_keys, filepath, self.current_user)
+
+    def preview_file(self, file_name):
+        temp_path = backend.multimedia_manager(self.vault_name, self.vault_keys, file_name)
+        
+        if temp_path and os.path.exists(temp_path):
+            dialog = MultimediaManagerDialog(temp_path, file_name, self)
+            dialog.exec()
+            self.load_files()
+        else:
+            QMessageBox.critical(self, "ERROR", "Multimedia file cannot decrypted!")
 
     def extract_file(self, file_name):
         dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination")
@@ -1072,3 +1091,99 @@ class RecoveryDialog(QtWidgets.QDialog):
         original_text = self.btn_dialog_rec_copy.text()
         self.btn_dialog_rec_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_rec_copy.setText(original_text))
+
+class MultimediaManagerDialog(QtWidgets.QDialog):
+    def __init__(self, temp_path, file_name, parent=None):
+        super().__init__(parent)
+        uic.loadUi(get_ui_path("dialog_mm_preview.ui"), self)
+
+        self.temp_path = temp_path
+        self.file_name = file_name
+        self.setWindowTitle(f"Multimedia Preview - {file_name}")
+
+        self.player = None
+        self.audio_output = None
+        self.video_widget = None
+
+        self.load_content()
+
+    def load_content(self):
+
+        mime_type, _ = mimetypes.guess_type(self.file_name)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+
+        ext = os.path.splitext(self.file_name)[1].lower()
+
+        if mime_type.startswith('text/') or ext in ['.py', '.json', '.log', '.ini', '.csv', '.env']:
+            self.stackedWidget_viewer.setCurrentIndex(0)
+            if hasattr(self, 'lbl_file_name'):
+                self.lbl_file_name.setText("Text Preview")
+                self.lbl_file_name.setStyleSheet("color: #cdd6f4;")
+            try:
+                with open(self.temp_path, 'r', encoding='utf-8') as f:
+                    self.textEdit_viewer.setText(f.read())
+            except:
+                with open(self.temp_path, 'r', encoding='iso-8859-1') as f:
+                    self.textEdit_viewer.setText(f.read())
+        elif mime_type.startswith('image/'):
+            self.stackedWidget_viewer.setCurrentIndex(1)
+            if hasattr(self, 'lbl_file_name'):
+                self.lbl_file_name.setText("Image Preview")
+                self.lbl_file_name.setStyleSheet("color: #cdd6f4;")
+            pixmap = QPixmap(self.temp_path)
+            scaled_pixmap = pixmap.scaled(
+                self.lbl_image_viewer.size(), 
+                Qt.AspectRatioMode.KeepAspectRatio, 
+                Qt.TransformationMode.SmoothTransformation
+            )
+            self.lbl_image_viewer.setPixmap(scaled_pixmap)
+        elif mime_type.startswith('video/') or mime_type.startswith('audio/'):
+            self.stackedWidget_viewer.setCurrentIndex(2)
+            self.player = QMediaPlayer()
+            self.audio_output = QAudioOutput()
+            self.player.setAudioOutput(self.audio_output)
+
+            if mime_type.startswith('video/'):
+                if hasattr(self, 'lbl_file_name'):
+                    self.lbl_file_name.setText("Video playing on safe mode")
+                    self.lbl_file_name.setStyleSheet("font-weight: bold; color: #89b4fa;")
+                self.video_widget = QVideoWidget()
+                self.layout_media.addWidget(self.video_widget)
+                self.player.setVideoOutput(self.video_widget)
+            else:
+                if hasattr(self, 'lbl_file_name'):
+                    self.lbl_file_name.setText("Audio file playing on safe mode")
+                    self.lbl_file_name.setStyleSheet("font-size: 14px; font-weight: bold; color: #a6e3a1;")
+
+            media_url = QUrl.fromLocalFile(self.temp_path)
+            self.player.setSource(media_url)
+            self.player.play()
+        else:
+            self.stackedWidget_viewer.setCurrentIndex(1)
+            if hasattr(self, 'lbl_file_name'):
+                self.lbl_file_name.setText("⚠️ Unsupported Format")
+                self.lbl_file_name.setStyleSheet("color: #f38ba8;")
+            self.lbl_image_viewer.setText(
+                f"No built-in preview supported for files with extension '{ext}'.\n"
+            )
+
+    def closeEvent(self, event):
+        if self.player:
+            self.player.stop()
+            self.player.setVideoOutput(None)
+            self.player.setAudioOutput(None)
+            self.player = None
+            self. audio_output = None
+
+        if self.video_widget:
+            self.layout_media.removeWidget(self.video_widget)
+            self.video_widget.deleteLater()
+            self.video_widget = None
+
+        time.sleep(0.1)
+
+        backend.secure_delete(self.temp_path)
+        print(f"[INFO] Temporary preview file successfully deleted: {self.temp_path}")
+        event.accept()
+
