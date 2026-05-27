@@ -6,8 +6,7 @@ SiriusVault/src/
 SiriusVault/temp/
 # Local folders GUI version
 SiriusVaultGUI/SiriusData/
-SiriusVault/temp/
-SiriusVaultGUI/temp
+SiriusVaultGUI/temp/
 
 # Local Test Files
 TEST/
