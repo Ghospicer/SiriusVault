@@ -125,6 +125,11 @@ def secure_delete(filepath, passes=3):
         return
     
     try:
+        os.chmod(filepath, stat.S_IWRITE)
+    except Exception:
+        pass
+    
+    try:
         length = os.path.getsize(filepath)
         if length == 0:
             os.remove(filepath)
@@ -870,11 +875,13 @@ def delete_user(username, user_password):
     if authenticate_user(username, user_password):
         if os.path.exists(USER_DIR):
             try:
+                if os.path.exists(USER_ENV):
+                    remove_readonly(USER_ENV)
                 secure_rmtree(USER_DIR)
                 if not os.path.exists(USER_DIR):
                     print("User and all associated vaults deleted successfully!")
                     print("Good Bye!")
-                    session["authenticated_user"] = None
+                    logout_user()
                 else:
                     print("Something went wrong. Please be sure to close all files and try again.")
                     return
