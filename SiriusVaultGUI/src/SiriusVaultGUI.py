@@ -737,7 +737,7 @@ class VaultMenuWindow(QtWidgets.QWidget):
             layout.setContentsMargins(0,0,0,0)
 
             btn_view = QPushButton("👁️")
-            btn_view.setToolTip("Güvenli Önizleme")
+            btn_view.setToolTip("Preview")
             btn_view.setFixedSize(30, 25)
             btn_view.setStyleSheet("background-color: #a6e3a1; border: none; border-radius: 4px; color: #1e1e2e;")
             btn_view.clicked.connect(lambda _, n=f_name: self.preview_file(n))
