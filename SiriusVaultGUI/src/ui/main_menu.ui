@@ -274,7 +274,7 @@ QPushButton:checked {
 }</string>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="page_vaults">
        <property name="styleSheet">
@@ -1582,7 +1582,7 @@ QPushButton:hover {
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_7">
            <item>
-            <widget class="QLabel" name="label_about">
+            <widget class="QLabel" name="lbl_about">
              <property name="minimumSize">
               <size>
                <width>0</width>

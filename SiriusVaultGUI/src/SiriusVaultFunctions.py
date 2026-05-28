@@ -25,6 +25,8 @@ try:
 except ImportError:
     print("Legacy functions not found!")
 
+APP_VERSION = "1.0.0"
+
 # Constants for user, password and vault management
 # GLOBAL PATH VARIABLES
 STORAGE_ROOT = None

@@ -278,7 +278,11 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         setup_password_toggle(self.input_pm_auth_pass)
         setup_password_toggle(self.input_pm_reg_pass)
         setup_password_toggle(self.input_pm_reg_pass_confirm)
-        
+
+        version_string = f"Sirius Vault v{backend.APP_VERSION} | Developed by Ghospicer"
+        if hasattr(self, 'lbl_about'):
+            self.lbl_about.setText(version_string)
+
         # --- Sidebar ---
         self.btn_my_vaults_mm.clicked.connect(self.show_my_vaults)
         self.btn_create_vault_mm.clicked.connect(self.open_create_vault_dialog)
