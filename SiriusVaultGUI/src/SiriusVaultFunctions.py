@@ -188,7 +188,7 @@ def logout_user():
     session["pm_inner_key"] = None
     session["pm_outer_key"] = None
     clean_memory()
-    print("\nSession ended. Please authenticate again.")
+    print("\n[INFO] Session ended. Please authenticate again.")
     return True
 
 def logout_passMngr():
@@ -199,12 +199,10 @@ def logout_passMngr():
 
     print("[INFO] Password Manager session keys wiped from memory.")
     return True
-
+# Not in use
 def exit_program():
-    global session_timer
-    if session_timer:
-        session_timer.cancel()
-    print("Exiting Sirius Vault.")
+    logout_user()
+    print("[INFO] Exiting Sirius Vault.")
     sys.exit()
 
 # .env
