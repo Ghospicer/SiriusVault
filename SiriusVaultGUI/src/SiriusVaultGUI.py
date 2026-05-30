@@ -856,6 +856,10 @@ class VaultMenuWindow(QtWidgets.QWidget):
         self.load_files()
 
     def closeEvent(self, event):
+
+        self.vault_keys = None
+        self.user_password = None
+        
         if self.parent_menu:
             self.parent_menu.show()
             self.parent_menu.load_vaults_table()

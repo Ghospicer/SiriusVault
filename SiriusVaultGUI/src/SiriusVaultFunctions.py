@@ -317,6 +317,18 @@ def load_user_context(username):
 
     return USER_DIR
 
+def initialize_vault_metadata(vault_path):
+    global VAULT_METADATA_FILE
+    global  ENC_VAULT_METADATA_FILE
+    if vault_path:
+        VAULT_METADATA_FILE = os.path.join(vault_path, "vault_metadata.json")
+        ENC_VAULT_METADATA_FILE = os.path.join(vault_path, "vault_metadata.json.enc")
+        return True
+    else:
+        print("[ERROR] Vault metadata files cannot initialized.")
+        return False
+        
+
 def move_user_data(username, new_path):
     global DATA_FOLDER, USER_DIR
     user_hash = hashlib.sha256(username.encode('utf-8')).hexdigest()
@@ -451,11 +463,12 @@ def encrypt_userdata_file(enc_key):
         return None
     try:
         encrypt_file(enc_key, USER_DATA_FILE, ENC_USER_DATA_FILE)
-        secure_delete(USER_DATA_FILE)
         return ENC_USER_DATA_FILE
     except Exception as e:
         print(f"[ERROR] User data ENC failed: {e}")
         return None
+    finally:
+        secure_delete(USER_DATA_FILE)
     
 # In use
 def encrypt_vaultdata_file(enc_key):
@@ -463,11 +476,12 @@ def encrypt_vaultdata_file(enc_key):
         return None
     try:
         encrypt_file(enc_key, VAULT_METADATA_FILE, ENC_VAULT_METADATA_FILE)
-        secure_delete(VAULT_METADATA_FILE)
         return ENC_VAULT_METADATA_FILE
     except Exception as e:
         print(f"[ERROR] Vault data ENC failed: {e}")
         return None
+    finally:
+        secure_delete(VAULT_METADATA_FILE)
     
 # In use
 def encrypt_passdata_file(enc_key):
@@ -475,11 +489,12 @@ def encrypt_passdata_file(enc_key):
         return None
     try:
         encrypt_file(enc_key, PASS_METADATA_FILE, ENC_PASS_METADATA_FILE)
-        secure_delete(PASS_METADATA_FILE)
         return ENC_PASS_METADATA_FILE
     except Exception as e:
         print(f"[ERROR] PM data ENC failed: {e}")
         return None
+    finally:
+        secure_delete(PASS_METADATA_FILE)
 
 # In use
 def decrypt_userdata_file(enc_key):
@@ -927,14 +942,17 @@ def create_vault(vault_name, vault_password, user_password):
                       "inner_salt": inner_salt.hex(),
                       "auth_hash": auth_hash.decode('utf-8'),
                       "files": [] }
-
-        temp_meta_path = os.path.join(vault_path, "vault_metadata.json")
-        with open(temp_meta_path, 'w') as f:
+        
+        initialize_vault_metadata(vault_path) 
+        with open(VAULT_METADATA_FILE, 'w') as f:
             json.dump(vault_meta, f)
 
-        enc_meta_path = os.path.join(vault_path, "vault_metadata.json.enc")
-        encrypt_file(outer_key, temp_meta_path, enc_meta_path) #Bak buraya
-        secure_delete(temp_meta_path)
+        try:
+            encrypt_vaultdata_file(outer_key)
+        except Exception as e:
+            print(f"[ERROR] Create vault error: {e}")
+        finally:
+            secure_delete(VAULT_METADATA_FILE)
 
         user_data["vaults"][vault_name] = {"outer_salt": outer_salt.hex()}
         with open(USER_DATA_FILE, 'w') as f:
@@ -971,27 +989,31 @@ def authenticate_vault(vault_name, vault_password, user_password):
 
         enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
         vault_path = os.path.join(VAULTS_DIR, enc_vault_name)
-        enc_meta_path = os.path.join(vault_path, "vault_metadata.json.enc")
 
-        if not os.path.exists(enc_meta_path):
-            return None
+        if initialize_vault_metadata(vault_path):
+            if not os.path.exists(ENC_VAULT_METADATA_FILE):
+                return None
         
-        temp_meta_path = os.path.join(vault_path, "vault_metadata.json")
         try:
-            decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_path)
+            decrypt_vaultdata_file(outer_key)
         except:
-            return None
+            return
         
-        with open(temp_meta_path, 'r') as f:
+        with open(VAULT_METADATA_FILE, 'r') as f:
             vault_meta = json.load(f)
 
         inner_salt = bytes.fromhex(vault_meta["inner_salt"])
         inner_key, auth_hash, _ = generate_key(vault_password, inner_salt)
 
         if vault_meta["auth_hash"] == auth_hash.decode('utf-8'):
-            secure_delete(temp_meta_path)
+            try:
+                encrypt_vaultdata_file(outer_key)
+            except Exception as e:
+                print(f"[ERROR] Vault authentication error: {e}")
+            finally:
+                secure_delete(VAULT_METADATA_FILE)
             return {"outer_key":outer_key, "inner_key": inner_key}
-        secure_delete(temp_meta_path)
+        secure_delete(VAULT_METADATA_FILE)
         return None
     finally:
         encrypt_userdata_file(master_enc_key)
@@ -1117,11 +1139,15 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username):
     file_hash = calculate_file_hash(filepath)
     enc_file_hash = calculate_file_hash(encrypted_path)
 
-    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
-    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
-    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
-
-    with open(temp_meta_path, 'r') as f:
+    if initialize_vault_metadata(vault_folder):
+        if not os.path.exists(ENC_VAULT_METADATA_FILE):
+            return None
+        
+    if not decrypt_vaultdata_file(outer_key):
+        print("[ERROR] Vault metadata could not be decrypted.")
+        return None
+    
+    with open(VAULT_METADATA_FILE, 'r') as f:
         vault_meta = json.load(f)
 
     file_metadata = {
@@ -1133,11 +1159,10 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username):
     }
     vault_meta["files"].append(file_metadata)
 
-    with open(temp_meta_path, 'w') as f:
+    with open(VAULT_METADATA_FILE, 'w') as f:
         json.dump(vault_meta, f)
 
-    encrypt_file(outer_key, temp_meta_path, enc_meta_path)
-    secure_delete(temp_meta_path)
+    encrypt_vaultdata_file(outer_key)
 
 def add_folder_recursive(vault_name, vault_keys, folder_path, username, delete_original=False):
     
@@ -1171,20 +1196,27 @@ def list_files_in_vault_GUI(vault_name, username, vault_keys):
     outer_key = vault_keys["outer_key"]
     enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
     vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
-    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
 
-    if not os.path.exists(enc_meta_path):
+    if initialize_vault_metadata(vault_folder):
+        if not os.path.exists(ENC_VAULT_METADATA_FILE):
+            print(f"[ERROR] Initiliaze Vault Metadata failed.")
+            return []
+
+    if not os.path.exists(ENC_VAULT_METADATA_FILE):
         return []
     
-    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
-    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+    try:
+        decrypt_vaultdata_file(outer_key)
+    except Exception as e:
+        print(f"[ERROR] File list error: {e}")
+        return
 
-    with open(temp_meta_path, 'r') as f:
+    with open(VAULT_METADATA_FILE, 'r') as f:
         vault_meta = json.load(f)
 
     files = vault_meta.get("files", [])
 
-    secure_delete(temp_meta_path)
+    encrypt_vaultdata_file(outer_key)
     return files
 
 # Remove file from vault
@@ -1199,16 +1231,22 @@ def remove_file_from_vault(vault_name, file_name, username, vault_keys):
     enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
     vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
 
-    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
-    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
-    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+    if initialize_vault_metadata(vault_folder):
+        if not os.path.exists(ENC_VAULT_METADATA_FILE):
+            print("[ERROR] Initialize Vault Metadata failed.")
+            return
+    try:
+        decrypt_vaultdata_file(outer_key)
+    except Exception as e:
+        print(f"[ERROR] Remove file error: {e}")
+        return 
 
-    with open(temp_meta_path, 'r') as f:
+    with open(VAULT_METADATA_FILE, 'r') as f:
         vault_meta = json.load(f)
 
     file_metadata = next((file for file in vault_meta["files"] if file["name"] == file_name), None)
     if not file_metadata: 
-        secure_delete(temp_meta_path)
+        secure_delete(VAULT_METADATA_FILE)
         return
     
     enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
@@ -1217,11 +1255,10 @@ def remove_file_from_vault(vault_name, file_name, username, vault_keys):
         os.remove(encrypted_path)
 
     vault_meta["files"].remove(file_metadata)
-    with open(temp_meta_path, 'w') as f:
+    with open(VAULT_METADATA_FILE, 'w') as f:
         json.dump(vault_meta, f)
 
-    encrypt_file(outer_key, temp_meta_path, enc_meta_path)
-    secure_delete(temp_meta_path)
+    encrypt_vaultdata_file(outer_key)
 
 # Extract file from vault
 def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path):
@@ -1234,14 +1271,21 @@ def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path)
 
     enc_vault_name = hashlib.sha256(outer_key + vault_name.encode('utf-8')).hexdigest()
     vault_folder = os.path.join(VAULTS_DIR, enc_vault_name)
-    enc_meta_path = os.path.join(vault_folder, "vault_metadata.json.enc")
 
-    decrypt_file(outer_key, enc_meta_path, "vault_metadata.json", vault_folder)
-    temp_meta_path = os.path.join(vault_folder, "vault_metadata.json")
+    if initialize_vault_metadata(vault_folder):
+        if not os.path.exists(ENC_VAULT_METADATA_FILE):
+            return
 
-    with open(temp_meta_path, 'r') as f:
+    try:
+        decrypt_vaultdata_file(outer_key)
+    except Exception as e:
+        print(f"[ERROR] Extract file error: {e}")
+        return
+
+    with open(VAULT_METADATA_FILE, 'r') as f:
         vault_meta = json.load(f)
-    secure_delete(temp_meta_path)
+
+    encrypt_vaultdata_file(outer_key)
 
     file_metadata = next((file for file in vault_meta["files"] if file["name"].lower() == file_name.lower()), None)
     if not file_metadata:
@@ -1259,7 +1303,11 @@ def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path)
         #print("Encrypted file corrupted!")
         raise Exception(f"[ERROR] Encrypted File Corrupted! Expected Hash: {stored_enc_file_hash}, File Hash: {enc_file_hash}")
 
-    decrypt_file(inner_key, encrypted_path, file_name, destination_path)
+    try:
+        decrypt_file(inner_key, encrypted_path, file_name, destination_path)
+    except Exception as e:
+        print(f"[ERROR] Extract file error: {e}")
+        return
     decrypted_path = os.path.join(destination_path, f"{file_name}")
     file_hash = calculate_file_hash(decrypted_path)
     stored_file_hash = next((file["hash"] for file in vault_meta["files"] if file["name"] == file_name), None)
