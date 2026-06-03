@@ -404,6 +404,7 @@ def encrypt_file(enc_key_b64, filepath, encrypted_path):
             f_out.write(nonce)
             f_out.write(encrypted_chunk)
             chunk_index += 1
+            
     return encrypted_path
 
 # In use
@@ -1115,13 +1116,13 @@ def delete_vault(username, vault_name, vault_keys, user_password):
         encrypt_userdata_file(master_enc_key)
 
 # Add file to vault
-def add_file_to_vault(vault_name, vault_keys, filepath, username):
+def add_file_to_vault(vault_name, vault_keys, filepath, username, delete_original=False):
     if not is_session_active():
         return
     reset_session_timer()
 
     if not os.path.exists(filepath):
-        #print("File not found!")
+        print("[ERROR] File not found!")
         return
     
     outer_key = vault_keys["outer_key"]
@@ -1134,7 +1135,13 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username):
     enc_file_name = hashlib.sha256(inner_key + file_name.encode('utf-8')).hexdigest()
     encrypted_path = os.path.join(vault_folder, f"{enc_file_name}.enc")
 
-    encrypt_file(inner_key, filepath, encrypted_path)
+    try:
+        encrypt_file(inner_key, filepath, encrypted_path)
+    except Exception as e:
+        print(f"[ERROR] Encryption failed for {file_name}: {e}")
+        if os.path.exists(encrypted_path):
+            os.remove(encrypted_path)
+        return False
 
     file_hash = calculate_file_hash(filepath)
     enc_file_hash = calculate_file_hash(encrypted_path)
@@ -1162,7 +1169,17 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username):
     with open(VAULT_METADATA_FILE, 'w') as f:
         json.dump(vault_meta, f)
 
-    encrypt_vaultdata_file(outer_key)
+    if encrypt_vaultdata_file(outer_key) is None:
+        print("[CRITICAL] Metadata encryption failed! Aborting secure delete to prevent data loss.")
+        return False
+
+    if delete_original:
+        try:
+            secure_delete(filepath)
+        except Exception as e:
+            print(f"[WARNING] Could not delete original file: {e}")
+    
+    return True
 
 def add_folder_recursive(vault_name, vault_keys, folder_path, username, delete_original=False):
     
@@ -1170,10 +1187,11 @@ def add_folder_recursive(vault_name, vault_keys, folder_path, username, delete_o
         for file in files:
             file_path = os.path.join(root, file)
             try:
-                add_file_to_vault(vault_name, vault_keys, file_path, username)
-                if delete_original:
-                    secure_delete(file_path)
-                print(f"[INFO] Processed: {file}")
+                success = add_file_to_vault(vault_name, vault_keys, file_path, username, delete_original)
+                if success:
+                    print(f"[INFO] Processed: {file}")
+                else:
+                    print(f"[ERROR] Failed to proccess {file}")
             except Exception as e:
                 print(f"[ERROR] Could not process {file}: {e}")
         if delete_original:

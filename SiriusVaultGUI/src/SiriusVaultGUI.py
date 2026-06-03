@@ -777,9 +777,7 @@ class VaultMenuWindow(QtWidgets.QWidget):
         reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original files from your computer after they encrypted in the vault?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         delete_originals = (reply == QMessageBox.StandardButton.Yes)
         for f in files:
-            self.process_file_import(f)
-            if delete_originals:
-                backend.secure_delete(f)
+            self.process_file_import(f, delete_originals)
         self.load_files()
 
     def import_folder_dialog(self):
@@ -799,8 +797,8 @@ class VaultMenuWindow(QtWidgets.QWidget):
             
             self.load_files()
 
-    def process_file_import(self, filepath):
-        backend.add_file_to_vault(self.vault_name, self.vault_keys, filepath, self.current_user)
+    def process_file_import(self, filepath, delete_originals):
+        backend.add_file_to_vault(self.vault_name, self.vault_keys, filepath, self.current_user, delete_original=delete_originals)
 
     def preview_file(self, file_name):
         temp_path = backend.multimedia_manager(self.vault_name, self.vault_keys, file_name)
@@ -847,9 +845,7 @@ class VaultMenuWindow(QtWidgets.QWidget):
                 if os.path.isdir(local_path):
                     backend.add_folder_recursive(self.vault_name, self.vault_keys, local_path, self.current_user, delete_original=delete_originals)
                 elif os.path.isfile(local_path):
-                    backend.add_file_to_vault(self.vault_name, self.vault_keys, local_path, self.current_user)
-                    if delete_originals:
-                        backend.secure_delete(local_path)
+                    backend.add_file_to_vault(self.vault_name, self.vault_keys, local_path, self.current_user, delete_original=delete_originals)
         except Exception as e:
             QMessageBox.warning(self, "Error", f"An error occurred during import:\n{str(e)}")
         
