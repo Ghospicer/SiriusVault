@@ -1037,16 +1037,151 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         uic.loadUi(get_ui_path("dialog_pm_genP.ui"), self)
-        self.generate()
+
+        self.layout().setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetFixedSize)
+
+        # Default Settings
+        # Password
+        self.spinBox_length.setValue(16)
+        self.chk_upper.setChecked(True)
+        self.chk_lower.setChecked(True)
+        self.chk_digits.setChecked(True)
+        self.chk_specials.setChecked(True)
+        self.chk_advanced_specials.setChecked(False)
+
+        self.spinBox_minUpper.setValue(1)
+        self.spinBox_minLower.setValue(1)
+        self.spinBox_minDigits.setValue(1)
+        self.spinBox_minSpecials.setValue(1)
+
+        # Passphrase
+        self.spinBox_wordCount.setValue(4)
+        self.combo_separator.setCurrentIndex(0)        
+        self.chk_capitalize.setChecked(True)
+        self.chk_includeNum.setChecked(False)
+
+        # No Focus Policy
+        self.btn_gen_password.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.btn_gen_passphrase.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.btn_dialog_genP_copy.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.btn_dialog_genP_reveal.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.btn_dialog_genP_close.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+
+        # Top Buttons
+        self.btn_gen_password.clicked.connect(lambda:self.switch_page(0))
+        self.btn_gen_passphrase.clicked.connect(lambda:self.switch_page(1))
+
+        # Bottom Buttons
         self.btn_dialog_genP_close.clicked.connect(self.accept)
         self.btn_dialog_genP_copy.clicked.connect(self.copy_to_clipboard)
         self.btn_dialog_genP_reveal.clicked.connect(self.toggle_reveal)
 
+        # Generate Password
+        self.spinBox_length.valueChanged.connect(self.generate)
+        self.chk_upper.toggled.connect(self.generate)
+        self.chk_lower.toggled.connect(self.generate)
+        self.chk_digits.toggled.connect(self.generate)
+        self.chk_specials.toggled.connect(self.generate)
+        self.chk_advanced_specials.toggled.connect(self.generate)
+        
+        self.spinBox_minUpper.valueChanged.connect(self.generate)
+        self.spinBox_minLower.valueChanged.connect(self.generate)
+        self.spinBox_minDigits.valueChanged.connect(self.generate)
+        self.spinBox_minSpecials.valueChanged.connect(self.generate)
+
+        # Generate Passphrase
+        self.spinBox_wordCount.valueChanged.connect(self.generate)
+        self.combo_separator.currentTextChanged.connect(self.generate)
+        self.chk_capitalize.toggled.connect(self.generate)
+        self.chk_includeNum.toggled.connect(self.generate)
+
+
+        self.switch_page(0)
+
+    def switch_page(self, index):
+        self.stackedWidget.setCurrentIndex(index)
+
+        active_style = """
+            QPushButton {
+                background-color: #89b4fa;
+                color: #1e1e2e;
+                border: 2px solid #89b4fa;
+                border-radius: 4px;
+                font-size: 14pt;
+                font-weight: bold;
+            }
+        """
+        inactive_style = """
+            QPushButton {
+                background-color: transparent;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                border-radius: 4px;
+                font-size: 14pt;
+                font-weight: bold;
+            }
+        """
+
+        if index == 0:
+            self.btn_gen_password.setStyleSheet(active_style)
+            self.btn_gen_passphrase.setStyleSheet(inactive_style)
+        else:
+            self.btn_gen_password.setStyleSheet(inactive_style)
+            self.btn_gen_passphrase.setStyleSheet(active_style)
+
+        for i in range(self.stackedWidget.count()):
+            page = self.stackedWidget.widget(i)
+            if i == index:
+                page.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+            else:
+                page.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Ignored)
+
+        #self.adjustSize()
+
+        self.generate()
+
     def generate(self):
-        import secrets, string
-        chars = string.ascii_letters + string.digits + "!@#$%^&*"
-        pwd = ''.join(secrets.choice(chars) for _ in range(16))
-        self.output_dialog_genP_generatedP.setText(pwd)
+        current_page = self.stackedWidget.currentIndex()
+
+        if current_page == 0:
+            self.lbl_dialog_genP_outputTitle.setText("Generated Password:")
+
+            length = self.spinBox_length.value()
+            upper = self.chk_upper.isChecked()
+            lower = self.chk_lower.isChecked()
+            digits = self.chk_digits.isChecked()
+            specials = self.chk_specials.isChecked()
+            adv_specials = self.chk_advanced_specials.isChecked()
+
+            min_upper = self.spinBox_minUpper.value() if upper else 0
+            min_lower = self.spinBox_minLower.value() if lower else 0
+            min_digits = self.spinBox_minDigits.value() if digits else 0
+            min_specials = self.spinBox_minSpecials.value() if (specials or adv_specials) else 0
+
+            generated_password = backend.generate_password(length, upper, lower, digits, specials, adv_specials, min_upper, min_lower, min_digits, min_specials)
+
+            if generated_password:
+                self.output_dialog_genP_generatedP.setText(generated_password)
+            else:
+                self.output_dialog_genP_generatedP.setText("Invalid Settings!")
+        
+        elif current_page == 1:
+            self.lbl_dialog_genP_outputTitle.setText("Generated Passphrase:")
+
+            wordCount = self.spinBox_wordCount.value()
+            sep_text = self.combo_separator.currentText()
+
+            separator = "-"
+            if "Space" in sep_text: separator = " "
+            if "_" in sep_text: separator = "_"
+            elif "." in sep_text: separator = "."
+
+            capitalize = self.chk_capitalize.isChecked()
+            number = self.chk_includeNum.isChecked()
+
+            phrase = backend.generate_passphrase(wordCount, separator, capitalize, number)
+            self.output_dialog_genP_generatedP.setText(phrase)
+
 
     def toggle_reveal(self):
         if self.output_dialog_genP_generatedP.echoMode() == QtWidgets.QLineEdit.EchoMode.Password:
@@ -1055,10 +1190,12 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
             self.output_dialog_genP_generatedP.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
 
     def copy_to_clipboard(self):
-        secure_copy_to_clipboard(self.output_dialog_genP_generatedP.text())
-        original_text = self.btn_dialog_genP_copy.text()
-        self.btn_dialog_genP_copy.setText("Copied!")
-        QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_genP_copy.setText(original_text))
+        text_to_copy = self.output_dialog_genP_generatedP.text()
+        if text_to_copy and text_to_copy != "Invalid Settings!":
+            secure_copy_to_clipboard(self.output_dialog_genP_generatedP.text())
+            original_text = self.btn_dialog_genP_copy.text()
+            self.btn_dialog_genP_copy.setText("Copied!")
+            QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_genP_copy.setText(original_text))
         
 class RecoveryDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):

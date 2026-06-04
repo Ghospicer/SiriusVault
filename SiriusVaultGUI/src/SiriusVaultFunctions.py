@@ -10,6 +10,7 @@ import shutil
 import sys
 import mimetypes
 import secrets
+import string
 import subprocess
 import ctypes
 import stat
@@ -876,8 +877,11 @@ def record_failed_attempt(username, penalty_override=None):
     payload = f"{attempts}:{lock_until}"
     signature = hmac.new(USER_SYSTEM_SALT.encode(), payload.encode(), hashlib.sha256).hexdigest()
 
-    with open(security_file, 'w') as f:
-        json.dump({"attempts": attempts, "lock_until": lock_until, "signature": signature}, f)
+    try:
+        with open(security_file, 'w') as f:
+            json.dump({"attempts": attempts, "lock_until": lock_until, "signature": signature}, f)
+    except Exception as e:
+        print(f"[ERROR] Cannot write to security.json: {e}")
 
 def reset_lockout(username):
     load_user_context(username)
@@ -1501,6 +1505,67 @@ def audit_password_strenght(password):
         return total, "Moderate"
     else:
         return total, "Weak"
+    
+# Generate Password
+def generate_password(length=16, use_upper=True, use_lower=True, use_digits=True, use_specials=True, use_advanced_specials=False, min_upper=1, min_lower=1, min_digits=1, min_specials=1):
+    
+    pool = ""
+    password_chars = []
+    safe_specials = "!@#$%^&*"
+    advanced_specials = "()_+-=[]{}|;:,.<>?"
+
+    active_specials = safe_specials
+    if use_advanced_specials:
+        active_specials += advanced_specials
+
+    if use_upper:
+        pool += string.ascii_uppercase
+        password_chars.extend(secrets.choice(string.ascii_uppercase) for _ in range(min_upper))
+    if use_lower:
+        pool += string.ascii_lowercase
+        password_chars.extend(secrets.choice(string.ascii_uppercase) for _ in range(min_lower))
+    if use_digits:
+        pool += string.digits
+        password_chars.extend(secrets.choice(string.digits) for _ in range(min_digits))
+    if use_specials:
+        pool += active_specials
+        password_chars.extend(secrets.choice(active_specials) for _ in range(min_specials))
+
+    if not pool or len(password_chars) > length:
+        return None
+    
+    password_chars.extend(secrets.choice(pool) for _ in range(length - len(password_chars)))
+
+    secrets.SystemRandom().shuffle(password_chars)
+
+    return "".join(password_chars)
+
+# Generate Passphrase
+def generate_passphrase(word_count=4, separator="-", capitalize=False, include_numbers=False):
+
+    wordlist = [
+        "apple", "brave", "crane", "dance", "eagle", "flame", "grape", "heart", "image", "juice",
+        "knife", "lemon", "magic", "night", "ocean", "piano", "queen", "river", "snake", "train",
+        "uncle", "voice", "water", "xenon", "yacht", "zebra", "alarm", "bread", "cloud", "dream",
+        "earth", "force", "ghost", "house", "iron", "jelly", "karma", "light", "mouse", "nurse",
+        "onion", "peace", "quote", "radio", "stone", "tiger", "union", "video", "wheat", "xerox",
+        "youth", "zesty", "arrow", "beach", "cabin", "delta", "enemy", "frost", "giant", "honey",
+        "index", "judge", "knock", "laser", "metal", "ninja", "orbit", "pilot", "quest", "robot",
+        "sugar", "toast", "ultra", "virus", "watch", "xray", "yield", "zonal", "asset", "blend",
+        "chase", "draft", "elite", "focal", "globe", "habit", "issue", "joint", "kneel", "logic"
+    ]
+
+    words = [secrets.choice(wordlist) for _ in range(word_count)]
+
+    if capitalize:
+        words = [w.capitalize() for w in words]
+
+    if include_numbers:
+        target_index = secrets.randbelow(word_count)
+        random_digit = str(secrets.randbelow(10))
+        words[target_index] += random_digit
+
+    return separator.join(words)
 
 # Extract Password for service
 def extract_password_service(service_name, pass_Mngr=None):
