@@ -852,6 +852,11 @@ def get_lockout_data(username):
     
 def record_failed_attempt(username, penalty_override=None):
     load_user_context(username)
+
+    if not USER_DIR or not os.path.exists(USER_DIR):
+        print(f"[WARNING] Failed login attempt for non-existent user: {username}")
+        return
+
     USER_SYSTEM_SALT = initialize_user_system_salt()
     if not USER_SYSTEM_SALT:
         return
