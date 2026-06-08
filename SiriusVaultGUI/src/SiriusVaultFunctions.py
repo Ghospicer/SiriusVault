@@ -76,6 +76,45 @@ def is_session_active():
     logout_user()  # Logout if the session expired
     return False
 
+def is_system_locked():
+
+    target_os = sys.platform
+
+    if target_os == "win32":
+        user32 = ctypes.windll.User32
+        desktop = user32.OpenInputDesktop(0, False, 0x0100)
+
+        if desktop:
+            user32.CloseDesktop(desktop)
+            return False
+        else:
+            return True
+    elif target_os.startswith("linux"):
+        try:
+            gnome_cmd = ["dbus-send", "--print-reply", "--dest=org.gnome.ScreenSaver", 
+                         "/org/gnome/ScreenSaver", "org.gnome.ScreenSaver.GetActive"]
+            result = subprocess.run(gnome_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1)
+            if "boolean true" in result.stdout:
+                return True
+
+            fd_cmd = ["dbus-send", "--print-reply", "--dest=org.freedesktop.ScreenSaver", 
+                      "/org/freedesktop/ScreenSaver", "org.freedesktop.ScreenSaver.GetActive"]
+            result_fd = subprocess.run(fd_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1)
+            if "boolean true" in result_fd.stdout:
+                return True
+                
+        except Exception as e:
+            print(f"[DEBUG] Linux lock check failure: {e}")
+        return False
+    elif target_os == "darwin":
+        try:
+            mac_cmd = "python3 -c 'import Quartz; print(Quartz.CGSessionCopyCurrentDictionary())'"
+            pass
+        except Exception:
+            pass
+        return False
+    return False
+
 def update_user_timeout_setting(username, password, new_index):
     
     load_user_context(username)
@@ -356,6 +395,10 @@ def move_user_data(username, new_path):
     except Exception as e:
         print(f"[ERROR] User data move failed: {e}")
         return "ERROR"
+
+# Resource Path
+def get_resource_path(filename):
+    return os.path.join(os.path.dirname(__file__), "resources", filename)
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
@@ -1548,17 +1591,32 @@ def generate_password(length=16, use_upper=True, use_lower=True, use_digits=True
 # Generate Passphrase
 def generate_passphrase(word_count=4, separator="-", capitalize=False, include_numbers=False):
 
-    wordlist = [
-        "apple", "brave", "crane", "dance", "eagle", "flame", "grape", "heart", "image", "juice",
-        "knife", "lemon", "magic", "night", "ocean", "piano", "queen", "river", "snake", "train",
-        "uncle", "voice", "water", "xenon", "yacht", "zebra", "alarm", "bread", "cloud", "dream",
-        "earth", "force", "ghost", "house", "iron", "jelly", "karma", "light", "mouse", "nurse",
-        "onion", "peace", "quote", "radio", "stone", "tiger", "union", "video", "wheat", "xerox",
-        "youth", "zesty", "arrow", "beach", "cabin", "delta", "enemy", "frost", "giant", "honey",
-        "index", "judge", "knock", "laser", "metal", "ninja", "orbit", "pilot", "quest", "robot",
-        "sugar", "toast", "ultra", "virus", "watch", "xray", "yield", "zonal", "asset", "blend",
-        "chase", "draft", "elite", "focal", "globe", "habit", "issue", "joint", "kneel", "logic"
-    ]
+    wordlist_file = get_resource_path("wordlist.txt")
+    wordlist = []
+
+    if os.path.exists(wordlist_file):
+        try:
+            with open(wordlist_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        wordlist.append(parts[1])
+        except Exception as e:
+            print(f"[ERROR] Could not read wordlist file: {e}")
+
+    if not wordlist:
+        print("[WARNING] Using fallback wordlist!")
+        wordlist = [
+            "apple", "brave", "crane", "dance", "eagle", "flame", "grape", "heart", "image", "juice",
+            "knife", "lemon", "magic", "night", "ocean", "piano", "queen", "river", "snake", "train",
+            "uncle", "voice", "water", "xenon", "yacht", "zebra", "alarm", "bread", "cloud", "dream",
+            "earth", "force", "ghost", "house", "iron", "jelly", "karma", "light", "mouse", "nurse",
+            "onion", "peace", "quote", "radio", "stone", "tiger", "union", "video", "wheat", "xerox",
+            "youth", "zesty", "arrow", "beach", "cabin", "delta", "enemy", "frost", "giant", "honey",
+            "index", "judge", "knock", "laser", "metal", "ninja", "orbit", "pilot", "quest", "robot",
+            "sugar", "toast", "ultra", "virus", "watch", "xray", "yield", "zonal", "asset", "blend",
+            "chase", "draft", "elite", "focal", "globe", "habit", "issue", "joint", "kneel", "logic"
+        ]
 
     words = [secrets.choice(wordlist) for _ in range(word_count)]
 

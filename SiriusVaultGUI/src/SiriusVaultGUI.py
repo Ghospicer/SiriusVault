@@ -337,6 +337,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         self.load_vaults_table()
 
     def verify_session(self):
+        if backend.is_system_locked():
+            print("[SECURITY] OS Lock detected! Forcing immediate logout...")
+            backend.logout_user()
+
         if backend.session.get("authenticated_user") is None:
             self.session_monitor.stop()
             for widget in QApplication.topLevelWidgets():
@@ -348,7 +352,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             if hasattr(self, 'vault_window') and self.vault_window.isVisible():
                 self.vault_window.close()
             
-            QMessageBox.warning(self, "Session Expired", "Your session has expired due to inactivity.\nPlease log in again.")
+            QMessageBox.warning(self, "Session Expired", "Your session has expired due to inactivity/lockdown.\nPlease log in again.")
             
             self.handle_logout()
 

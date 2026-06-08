@@ -5,7 +5,7 @@ Sirius Vault is a zero-trust, local-first secure file vault and password manager
 ## Key Features
 
 * **Encryption:** Utilizes chunked **AES-GCM** for authenticated file encryption and **Argon2id** for robust key derivation.
-* **Integrated Password Manager:** A secure environment to store credentials with a dynamic strength auditor and random password generator.
+* **Integrated Password Manager:** A secure environment to store credentials with a dynamic strength auditor and random password/passphrase generator.
 * **In-Memory Multimedia Preview:** Safely view images and play video/audio files directly within the vault. Files are decrypted to a temporary location, played, and securely shredded from the disk the millisecond the preview window closes.
 * **Advanced Memory Hygiene (Zero-Trust):**
   * Cryptographic keys are wiped from RAM immediately upon locking the vault or closing the application.
