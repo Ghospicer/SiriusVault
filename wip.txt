@@ -1,0 +1,24 @@
+Works in progress:
+1- Full multimedia support.
+2- Reconstruction of Audit Password and Generate Password functions.
+3- Upgrading cryptography to PQC level.
+4- Backup codes.
+5- 2FA-MFA implemantation.
+6- E-mail (for login, authentication, recovery) (maybe)
+7- Saving versions of files (using hashmap) ()
+
+
+05.02.26:
+Backup codes added and ui changes mostly done. Please create a new dialog for showing
+recovery codes and also a frame for Backup codes in main_menu.ui->Settings.
+
+WIPS        | Backend | Frontend | TEST |
+WIP 1       |   %0    |    %0    |  %0  |
+WIP 2       |   %0    |    %0    |  %0  |
+WIP 3       |  %100   |    %90   |  %0  |
+WIP 4       |  %100   |   %100   | %100 |
+WIP 5       |   %0    |    %0    |  %0  |
+WIP 6       |   %0    |    %0    |  %0  |
+WIP 7       |   %0    |    %0    |  %0  |
+
+This file is no longer valid. Check todo.txt under SiriusVaultDEV folder.
