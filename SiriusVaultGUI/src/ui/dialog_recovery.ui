@@ -25,10 +25,6 @@
   <property name="windowTitle">
    <string>Account Recovery</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
-  </property>
   <property name="styleSheet">
    <string notr="true">QDialog {
     background-color: #1e1e2e;

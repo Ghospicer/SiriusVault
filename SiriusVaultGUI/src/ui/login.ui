@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>420</width>
-    <height>400</height>
+    <height>410</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -21,10 +21,6 @@
   </property>
   <property name="windowTitle">
    <string>SIRIUS VAULT</string>
-  </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
   </property>
   <property name="autoFillBackground">
    <bool>false</bool>
@@ -39,6 +35,18 @@
 }</string>
    </property>
    <layout class="QGridLayout" name="gridLayout">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item row="3" column="0">
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
@@ -60,6 +68,57 @@
            <enum>QFrame::Shadow::Raised</enum>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <spacer name="horizontalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QComboBox" name="combo_login_language">
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QComboBox {
+    background-color: transparent;
+    color: #89b4fa;
+    border: none;
+    font-weight: bold;
+}
+QComboBox::drop-down {
+    border: none;
+}</string>
+               </property>
+               <property name="currentIndex">
+                <number>0</number>
+               </property>
+               <property name="sizeAdjustPolicy">
+                <enum>QComboBox::SizeAdjustPolicy::AdjustToContentsOnFirstShow</enum>
+               </property>
+               <item>
+                <property name="text">
+                 <string>TR</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>EN</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
+           </item>
            <item>
             <widget class="QLabel" name="label_title">
              <property name="sizePolicy">
@@ -508,6 +567,51 @@ QPushButton:pressed {
            <enum>QFrame::Shadow::Raised</enum>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_5">
+             <item>
+              <spacer name="horizontalSpacer_3">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QComboBox" name="combo_register_language">
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QComboBox {
+    background-color: transparent;
+    color: #89b4fa;
+    border: none;
+    font-weight: bold;
+}
+QComboBox::drop-down {
+    border: none;
+}</string>
+               </property>
+               <item>
+                <property name="text">
+                 <string>TR</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>EN</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
+           </item>
            <item>
             <widget class="QLabel" name="label_title_2">
              <property name="sizePolicy">

@@ -13,10 +13,6 @@
   <property name="windowTitle">
    <string>SIRIUS VAULT</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
-  </property>
   <property name="styleSheet">
    <string notr="true">QMainWindow {
     background-color: #1e1e2e;
@@ -1094,11 +1090,9 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="70,30">
-          <item>
-           <widget class="QGroupBox" name="groupBox_settings_storage">
-            <property name="styleSheet">
-             <string notr="true">QGroupBox {
+         <widget class="QGroupBox" name="groupBox_settings_storage">
+          <property name="styleSheet">
+           <string notr="true">QGroupBox {
     background-color: #181825;
     border: 1px solid #313244;
     border-radius: 8px;
@@ -1115,42 +1109,42 @@ QGroupBox::title {
     padding: 0 5px;
     background-color: #1e1e2e;
 }</string>
-            </property>
-            <property name="title">
-             <string>Storage Location</string>
-            </property>
-            <layout class="QVBoxLayout" name="verticalLayout_5">
-             <item>
-              <widget class="QLabel" name="label_cur_storage_path">
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>17</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string notr="true">QLabel {
+          </property>
+          <property name="title">
+           <string>Storage Location</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QLabel" name="label_cur_storage_path">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>17</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QLabel {
     color: #cdd6f4;
     font-weight: normal;
     font-size: 10pt;
     background-color: transparent;
 }</string>
-               </property>
-               <property name="text">
-                <string>Current Storage Path:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_cur_storage_path">
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>30</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string notr="true">QLineEdit {
+             </property>
+             <property name="text">
+              <string>Current Storage Path:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEdit_cur_storage_path">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>30</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QLineEdit {
     background-color: #11111b;
     border: 1px solid #45475a;
     border-radius: 4px;
@@ -1158,27 +1152,59 @@ QGroupBox::title {
     padding: 5px;
     font-size: 10pt;
 }</string>
+             </property>
+             <property name="placeholderText">
+              <string>Buraya güncel depolama klasörünün pathini ayarla</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <widget class="QPushButton" name="btn_settings_sto_move">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>30</height>
+                </size>
                </property>
-               <property name="placeholderText">
-                <string>Buraya güncel depolama klasörünün pathini ayarla</string>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QPushButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QGroupBox QPushButton:hover {
+    background-color: #45475a;
+    color: #ffffff;
+    border-color: #89b4fa;
+}</string>
+               </property>
+               <property name="text">
+                <string>Move</string>
                </property>
               </widget>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_4">
-               <item>
-                <widget class="QPushButton" name="btn_settings_sto_move">
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>30</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QPushButton {
+              <widget class="QPushButton" name="btn_settings_sto_change">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>30</height>
+                </size>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QPushButton {
     background-color: #313244;
     color: #cdd6f4;
     border: 1px solid #45475a;
@@ -1192,49 +1218,19 @@ QGroupBox QPushButton:hover {
     color: #ffffff;
     border-color: #89b4fa;
 }</string>
-                 </property>
-                 <property name="text">
-                  <string>Move</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="btn_settings_sto_change">
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>30</height>
-                  </size>
-                 </property>
-                 <property name="cursor">
-                  <cursorShape>PointingHandCursor</cursorShape>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QPushButton {
-    background-color: #313244;
-    color: #cdd6f4;
-    border: 1px solid #45475a;
-    border-radius: 5px;
-    padding: 6px 12px;
-    font-weight: bold;
-}
-
-QGroupBox QPushButton:hover {
-    background-color: #45475a;
-    color: #ffffff;
-    border-color: #89b4fa;
-}</string>
-                 </property>
-                 <property name="text">
-                  <string>Change</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+               </property>
+               <property name="text">
+                <string>Change</string>
+               </property>
+              </widget>
              </item>
             </layout>
-           </widget>
-          </item>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0">
           <item>
            <widget class="QGroupBox" name="groupBox_settings_apreferences">
             <property name="styleSheet">
@@ -1259,41 +1255,43 @@ QGroupBox::title {
             <property name="title">
              <string>App Preferences</string>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_6">
+            <layout class="QHBoxLayout" name="horizontalLayout_8">
              <item>
-              <widget class="QLabel" name="label_session_timeout">
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>17</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string notr="true">QLabel {
+              <layout class="QVBoxLayout" name="verticalLayout_12">
+               <item>
+                <widget class="QLabel" name="label_session_timeout">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>17</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QLabel {
     color: #cdd6f4;
     font-weight: normal;
     font-size: 10pt;
     background-color: transparent;
 }</string>
-               </property>
-               <property name="text">
-                <string>Session Timeout:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comboBox">
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>30</height>
-                </size>
-               </property>
-               <property name="cursor">
-                <cursorShape>PointingHandCursor</cursorShape>
-               </property>
-               <property name="styleSheet">
-                <string notr="true">QComboBox {
+                 </property>
+                 <property name="text">
+                  <string>Session Timeout:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="comboBox_timeout">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>30</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QComboBox {
     background-color: #11111b;
     border: 1px solid #45475a;
     border-radius: 4px;
@@ -1335,28 +1333,194 @@ QComboBox QAbstractItemView {
     selection-color: #ffffff;
     outline: none;
 }</string>
-               </property>
+                 </property>
+                 <item>
+                  <property name="text">
+                   <string>1 Minute</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>5 Minutes (default)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>10 Minutes</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>30 Minutes</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_6">
                <item>
-                <property name="text">
-                 <string>1 minute</string>
-                </property>
+                <widget class="QLabel" name="label_session_timeout_2">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>17</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-weight: normal;
+    font-size: 10pt;
+    background-color: transparent;
+}</string>
+                 </property>
+                 <property name="text">
+                  <string>Language:</string>
+                 </property>
+                </widget>
                </item>
                <item>
-                <property name="text">
-                 <string>5 Minutes (default)</string>
-                </property>
+                <widget class="QComboBox" name="comboBox_language">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>30</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QComboBox {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 5px;
+    padding-left: 10px;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #45475a;
+    border-left-style: solid;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background: #1e1e2e;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border: none;
+    
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #89b4fa;
+    
+    subcontrol-origin: padding;
+    subcontrol-position: center;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #181825;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    selection-background-color: #313244;
+    selection-color: #ffffff;
+    outline: none;
+}</string>
+                 </property>
+                 <item>
+                  <property name="text">
+                   <string>Türkçe</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>English (default)</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_11">
+               <item>
+                <widget class="QLabel" name="label_7">
+                 <property name="styleSheet">
+                  <string notr="true">QLabel {
+    color: #cdd6f4;
+    font-weight: normal;
+    font-size: 10pt;
+    background-color: transparent;
+}</string>
+                 </property>
+                 <property name="text">
+                  <string>Theme:</string>
+                 </property>
+                </widget>
                </item>
                <item>
-                <property name="text">
-                 <string>10 Minutes</string>
-                </property>
+                <widget class="QComboBox" name="comboBox_theme">
+                 <property name="styleSheet">
+                  <string notr="true">QComboBox {
+    background-color: #11111b;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    color: #a6adc8;
+    padding: 5px;
+    padding-left: 10px;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #45475a;
+    border-left-style: solid;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background: #1e1e2e;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border: none;
+    
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #89b4fa;
+    
+    subcontrol-origin: padding;
+    subcontrol-position: center;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #181825;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    selection-background-color: #313244;
+    selection-color: #ffffff;
+    outline: none;
+}</string>
+                 </property>
+                 <item>
+                  <property name="text">
+                   <string>SiriusVault Default</string>
+                  </property>
+                 </item>
+                </widget>
                </item>
-               <item>
-                <property name="text">
-                 <string>30 Minutes</string>
-                </property>
-               </item>
-              </widget>
+              </layout>
              </item>
             </layout>
            </widget>
@@ -1364,82 +1528,173 @@ QComboBox QAbstractItemView {
          </layout>
         </item>
         <item>
-         <widget class="QFrame" name="frame_settings_dangerzone_2">
+         <layout class="QHBoxLayout" name="horizontalLayout_7"/>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox">
           <property name="styleSheet">
-           <string notr="true">QFrame {
+           <string notr="true">QGroupBox {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    margin-top: 25px;
+    font-weight: bold;
+    color: #89b4fa;
+    font-size: 12pt;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 15px;
+    padding: 0 5px;
+    background-color: #1e1e2e;
+}</string>
+          </property>
+          <property name="title">
+           <string>Password Manager</string>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QFrame" name="verticalFrame">
+             <property name="styleSheet">
+              <string notr="true">QFrame {
+    background-color: rgba(243, 139, 168, 0.05);
+    border: 2px solid #89b4fa;
+    border-radius: 8px;
+}</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_13">
+              <item>
+               <widget class="QLabel" name="label_8">
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
+    color: #89b4fa;
+    font-weight: bold;
+    font-size: 17pt;
+    background-color: transparent;
+}</string>
+                </property>
+                <property name="text">
+                 <string>Change Password</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_2">
+                <property name="orientation">
+                 <enum>Qt::Orientation::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_settings_change_pm_pass">
+                <property name="styleSheet">
+                 <string notr="true">QPushButton {
+    background-color: transparent;
+    color: #89b4fa;
+    border: 2px solid #89b4fa;
+    font-weight: bold;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+QPushButton:hover {
+    background-color: #89b4fa;
+    color: #1e1e2e;
+}</string>
+                </property>
+                <property name="text">
+                 <string>Change Password Manager Password</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame_settings_dangerzone_2">
+             <property name="styleSheet">
+              <string notr="true">QFrame {
     background-color: rgba(243, 139, 168, 0.05);
     border: 2px solid #f38ba8;
     border-radius: 8px;
 }</string>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::Shape::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Shadow::Raised</enum>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_9">
-           <item>
-            <widget class="QLabel" name="label_dangerZone_main_2">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>35</height>
-              </size>
              </property>
-             <property name="styleSheet">
-              <string notr="true">QLabel {
+             <property name="frameShape">
+              <enum>QFrame::Shape::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_9">
+              <item>
+               <widget class="QLabel" name="label_dangerZone_main_2">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>35</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
     color: #f38ba8;
     font-weight: bold;
     font-size: 17pt;
     background-color: transparent;
 }</string>
-             </property>
-             <property name="text">
-              <string>Permanently Delete Password Manager</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_dangerZone_sub_2">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>25</height>
-              </size>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">QLabel {
+                </property>
+                <property name="text">
+                 <string>Permanently Delete Password Manager</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_dangerZone_sub_2">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
     color: #bac2de;
     font-style: italic;
     font-size: 12pt;
     background-color: transparent;
 }</string>
-             </property>
-             <property name="text">
-              <string>This action cannot be undone. All your passwords will be permanently lost.</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="btn_settings_dZ_deleteAC_2">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>36</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>200</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="cursor">
-              <cursorShape>PointingHandCursor</cursorShape>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">QPushButton {
+                </property>
+                <property name="text">
+                 <string>This action cannot be undone. All your passwords will be deleted.</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_settings_dZ_deleteAC_2">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>200</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QPushButton {
     background-color: transparent;
     color: #f38ba8;
     border: 2px solid #f38ba8;
@@ -1452,92 +1707,183 @@ QPushButton:hover {
     background-color: #f38ba8;
     color: #1e1e2e;
 }</string>
-             </property>
-             <property name="text">
-              <string>DELETE Password Manager</string>
-             </property>
+                </property>
+                <property name="text">
+                 <string>DELETE Password Manager</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>
          </widget>
         </item>
         <item>
-         <widget class="QFrame" name="frame_settings_dangerzone">
+         <widget class="QGroupBox" name="groupBox_2">
           <property name="styleSheet">
-           <string notr="true">QFrame {
+           <string notr="true">QGroupBox {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    margin-top: 25px;
+    font-weight: bold;
+    color: #89b4fa;
+    font-size: 12pt;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 15px;
+    padding: 0 5px;
+    background-color: #1e1e2e;
+}</string>
+          </property>
+          <property name="title">
+           <string>Account</string>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <item>
+            <widget class="QFrame" name="verticalFrame">
+             <property name="styleSheet">
+              <string notr="true">QFrame {
+    background-color: rgba(243, 139, 168, 0.05);
+    border: 2px solid #89b4fa;
+    border-radius: 8px;
+}</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_14">
+              <item>
+               <widget class="QLabel" name="label_9">
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
+    color: #89b4fa;
+    font-weight: bold;
+    font-size: 17pt;
+    background-color: transparent;
+}</string>
+                </property>
+                <property name="text">
+                 <string>Change Password</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Orientation::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_settings_change_user_pass">
+                <property name="styleSheet">
+                 <string notr="true">QPushButton {
+    background-color: transparent;
+    color: #89b4fa;
+    border: 2px solid #89b4fa;
+    font-weight: bold;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+QPushButton:hover {
+    background-color: #89b4fa;
+    color: #1e1e2e;
+}</string>
+                </property>
+                <property name="text">
+                 <string>Change Account Password</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame_settings_dangerzone">
+             <property name="styleSheet">
+              <string notr="true">QFrame {
     background-color: rgba(243, 139, 168, 0.05);
     border: 2px solid #f38ba8;
     border-radius: 8px;
 }</string>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::Shape::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Shadow::Raised</enum>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_8">
-           <item>
-            <widget class="QLabel" name="label_dangerZone_main">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>35</height>
-              </size>
              </property>
-             <property name="styleSheet">
-              <string notr="true">QLabel {
+             <property name="frameShape">
+              <enum>QFrame::Shape::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_8">
+              <item>
+               <widget class="QLabel" name="label_dangerZone_main">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>35</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
     color: #f38ba8;
     font-weight: bold;
     font-size: 17pt;
     background-color: transparent;
 }</string>
-             </property>
-             <property name="text">
-              <string>Permanently Delete Account</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_dangerZone_sub">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>25</height>
-              </size>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">QLabel {
+                </property>
+                <property name="text">
+                 <string>Permanently Delete Account</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_dangerZone_sub">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QLabel {
     color: #bac2de;
     font-style: italic;
     font-size: 12pt;
     background-color: transparent;
 }</string>
-             </property>
-             <property name="text">
-              <string>This action cannot be undone. All your vaults, passwords and data will be permanently lost.</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="btn_settings_dZ_deleteAC">
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>36</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>150</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="cursor">
-              <cursorShape>PointingHandCursor</cursorShape>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">QPushButton {
+                </property>
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This action cannot be undone. All your data will be permanently lost.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_settings_dZ_deleteAC">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>150</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QPushButton {
     background-color: transparent;
     color: #f38ba8;
     border: 2px solid #f38ba8;
@@ -1550,10 +1896,13 @@ QPushButton:hover {
     background-color: #f38ba8;
     color: #1e1e2e;
 }</string>
-             </property>
-             <property name="text">
-              <string>DELETE ACCOUNT</string>
-             </property>
+                </property>
+                <property name="text">
+                 <string>DELETE ACCOUNT</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>

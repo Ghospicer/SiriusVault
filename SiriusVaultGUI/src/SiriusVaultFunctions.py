@@ -46,6 +46,7 @@ ENC_PASS_METADATA_FILE = None
 
 # LOCAL PATHS
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESOURCE_DIR = os.path.join(BASE_DIR, "resources")
 TEMP_DIR = os.path.join(BASE_DIR, "..", "temp")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 SESSION_TIMEOUT = 300  # 5 minutes
@@ -139,13 +140,14 @@ def update_user_timeout_setting(username, password, new_index):
         return False
 
 def clean_memory():
-    global USER_DIR, VAULTS_DIR, RECOVERY_DIR
+    global USER_DIR, VAULTS_DIR, RESOURCE_DIR, RECOVERY_DIR
     global USER_DATA_FILE, VAULT_METADATA_FILE, PASS_METADATA_FILE
     global ENC_USER_DATA_FILE, ENC_VAULT_METADATA_FILE, ENC_PASS_METADATA_FILE
     global USER_ENV, USER_SYSTEM_SALT
 
     USER_DIR = None
     VAULTS_DIR = None
+    RESOURCE_DIR = None
     RECOVERY_DIR = None
     USER_DATA_FILE = None
     VAULT_METADATA_FILE = None
@@ -290,13 +292,35 @@ def load_config():
             return json.load(f)
     except (json.JSONDecodeError, IOError):
         return None
-    
-# Save config
+
+def get_config_settings(key, default_value=None):
+    config_data = load_config()
+    if config_data is not None:
+        return config_data.get(key, default_value)
+    return default_value
+
+def save_config_settings(key, value):
+    config_data = load_config()
+    if config_data is None:
+        config_data = {}
+
+    config_data[key] = value
+
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config_data,f, indent=4)
+    except IOError as e:
+        print(f"[ERROR] Configuration setting cannot be saved: {e}")
+
 def save_config(storage_path):
-    config_data = {
-        "last_storage_root": os.path.abspath(storage_path),
-        "last_access_date": time.strftime('%Y-%m-%d %H:%M:%S')
-    }
+    config_data = load_config()
+    if config_data is None:
+        config_data = {}
+
+
+    config_data["last_storage_root"] = os.path.abspath(storage_path)
+    config_data["last_access_date"] = time.strftime('%Y-%m-%d %H:%M:%S')
+    
     try:
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config_data, f, indent=4)
@@ -306,10 +330,13 @@ def save_config(storage_path):
 # INIT FUNC
 def initialize_storage(target_path=None, default=True):
 
-    global STORAGE_ROOT, VAULTS_DIR, DATA_FOLDER
+    global STORAGE_ROOT, VAULTS_DIR, RESOURCE_DIR, DATA_FOLDER
 
     if default:
-        STORAGE_ROOT = os.path.join(BASE_DIR, "..")
+        #STORAGE_ROOT = os.path.join(BASE_DIR, "..")
+        #DATA_FOLDER = os.path.join(STORAGE_ROOT, "SiriusData")
+        documents_path = os.path.join(os.path.expanduser("~"), "Documents")
+        STORAGE_ROOT = os.path.join(documents_path, "SiriusVault")
         DATA_FOLDER = os.path.join(STORAGE_ROOT, "SiriusData")
     else:
         if target_path is None:
@@ -398,7 +425,8 @@ def move_user_data(username, new_path):
 
 # Resource Path
 def get_resource_path(filename):
-    return os.path.join(os.path.dirname(__file__), "resources", filename)
+    global RESOURCE_DIR
+    return os.path.join(RESOURCE_DIR, filename)
 
 # Encryption/Decryption Functions
 def generate_key(password, salt=None):
@@ -937,6 +965,36 @@ def reset_lockout(username):
     if os.path.exists(security_file):
         os.remove(security_file)
 
+# Change user password (IN TEST)
+def change_user_password(username, old_password, new_password):
+
+    if not authenticate_user(username, old_password):
+        print("User authentication failed. Wrong credentials!")
+        return False
+
+    old_enc_key, _, _ = generate_key(old_password, USER_SYSTEM_SALT)
+    new_enc_key, _, _ = generate_key(new_password, USER_SYSTEM_SALT)
+
+    try:
+        if decrypt_userdata_file(old_enc_key):
+            with open(USER_DATA_FILE, 'r') as f:
+                user_data = json.load(f)
+            stored_salt = bytes.fromhex(user_data.get("salt"))
+            _, new_auth_hash, _ = generate_key(new_password, stored_salt)
+            user_data["password_hash"] = new_auth_hash.decode('utf-8')
+            with open(USER_DATA_FILE, 'w') as f:
+                json.dump(user_data, f)
+
+            new_recovery_codes = setup_recovery_codes(username, new_password)
+            
+            reset_session_timer()
+            encrypt_userdata_file(new_enc_key)
+            print(f"User password for '{username}' changed successfully!")
+            return True, new_recovery_codes
+    except Exception as e:
+        print(f"[ERROR] User password could not be changed: {e}")
+        return False, str(e)
+            
 # Delete user
 def delete_user(username, user_password):
     load_user_context(username)
@@ -976,8 +1034,9 @@ def create_vault(vault_name, vault_password, user_password):
     try:
         with open(USER_DATA_FILE, 'r') as f:
             user_data = json.load(f)
-        
-        if vault_name in user_data["vaults"]: return "SAME_NAME"
+
+        if vault_name in user_data["vaults"]: 
+            return "SAME_NAME"
 
         outer_salt = os.urandom(16)
         outer_key, _, _ = generate_key(vault_password, outer_salt)
@@ -1140,6 +1199,145 @@ def list_vaults_GUI(username, user_password):
     finally:
         encrypt_userdata_file(master_enc_key)
 
+# Change Vault Password (IN TEST)
+def change_vault_password(user_pass, vault_name, old_password, new_password):
+    if not is_session_active():
+        return None
+    username = session["authenticated_user"]
+    reset_session_timer()
+
+    if not authenticate_vault(vault_name, old_password, user_pass):
+        print("Vault authentication failed. Wrong credentials!")
+        return False
+
+    master_enc_key, _, _ = generate_key(user_pass, USER_SYSTEM_SALT)
+
+    if not os.path.exists(USER_DATA_FILE):
+        decrypt_userdata_file(master_enc_key)
+
+    try:
+        with open(USER_DATA_FILE, 'r') as f:
+            user_data = json.load(f)
+
+        if vault_name not in user_data["vaults"]:
+            return None
+
+        outer_salt = bytes.fromhex(user_data["vaults"][vault_name]["outer_salt"])
+        old_outer_key, _, _ = generate_key(old_password, outer_salt)
+
+        old_enc_vault_name = hashlib.sha256(old_outer_key + vault_name.encode('utf-8')).hexdigest()
+        old_vault_path = os.path.join(VAULTS_DIR, old_enc_vault_name)
+
+        if initialize_vault_metadata(old_vault_path):
+            if not os.path.exists(ENC_VAULT_METADATA_FILE):
+                return False
+
+        try:
+            decrypt_vaultdata_file(old_outer_key)
+        except Exception as e:
+            print(f"[ERROR] Decryption failed: {e}")
+            return
+
+        with open(VAULT_METADATA_FILE, 'r') as f:
+            vault_meta = json.load(f)
+
+        inner_salt = bytes.fromhex(vault_meta["inner_salt"])
+        old_inner_key, old_auth_hash, _ = generate_key(old_password, inner_salt)
+        vault_keys = {
+            "outer_key": old_outer_key,
+            "inner_key": old_inner_key
+        }
+
+        if vault_meta["auth_hash"] == old_auth_hash.decode('utf-8'):
+
+            new_outer_key, _, _ = generate_key(new_password, outer_salt)
+            new_enc_vault_name = hashlib.sha256(new_outer_key + vault_name.encode('utf-8')).hexdigest()
+            new_vault_path = os.path.join(VAULTS_DIR, new_enc_vault_name)
+            new_inner_key, new_auth_hash, _ = generate_key(new_password, inner_salt)
+            if os.path.exists(new_vault_path):
+                return "SAME_NAME"
+            os.makedirs(new_vault_path)
+
+            new_vault_meta = {"owner": username,
+                              "inner_salt": inner_salt.hex(),
+                              "auth_hash": new_auth_hash.decode('utf-8'),
+                              "files": [] }
+            
+            for file_metadata in vault_meta["files"]:
+                f_name = file_metadata["name"]
+                f_size = file_metadata["size"]
+                old_f_hash = file_metadata["hash"]
+                old_f_enc_hash = file_metadata["enc_hash"]
+                f_date_added = file_metadata["date_added"]
+
+                old_enc_file_name = hashlib.sha256(old_inner_key + f_name.encode('utf-8')).hexdigest()
+                old_enc_file_path = os.path.join(old_vault_path, f"{old_enc_file_name}.enc")
+
+                if not os.path.exists(old_enc_file_path):
+                    raise Exception(f"[ERROR] Encrypted file is not on the disk! Searced Path: {old_enc_file_path}")
+                old_enc_file_hash = calculate_file_hash(old_enc_file_path)
+                if old_enc_file_hash != old_f_enc_hash:
+                    raise Exception(f"[ERROR] Encrypted File Corrupted! Expected Hash: {old_enc_file_hash}")
+
+                try:
+                    temp_file_path = decrypt_file(old_inner_key, old_enc_file_path, f_name, TEMP_DIR)
+                except Exception as e:
+                    print(f"[ERROR] Extract file error: {e}")
+                    return
+
+                new_enc_file_name = hashlib.sha256(new_inner_key + f_name.encode('utf-8')).hexdigest()
+                new_enc_file_path = os.path.join(new_vault_path, f"{new_enc_file_name}.enc")
+
+                try:
+                    encrypt_file(new_inner_key, temp_file_path, new_enc_file_path)
+                except Exception as e:
+                    print(f"[ERROR] Encryption failed for {f_name}: {e}")
+                    if os.path.exists(new_enc_file_path):
+                        os.remove(new_enc_file_path)
+                    return False
+
+                new_f_hash = calculate_file_hash(temp_file_path)
+                new_f_enc_hash = calculate_file_hash(new_enc_file_path)
+
+                new_vault_meta["files"].append(
+                    {
+                        "name": f_name,
+                        "size": f_size,
+                        "hash": new_f_hash,
+                        "enc_hash": new_f_enc_hash,
+                        "date_added": f_date_added
+                    }
+                )
+
+                if os.path.exists(new_enc_file_path):
+                    try:
+                        secure_delete(temp_file_path)
+                    except Exception as e:
+                        print(f"[WARNING] Could not delete temporary file: {e}")
+
+            # Old Vault
+            try:
+                encrypt_vaultdata_file(old_outer_key)
+            except Exception as e:
+                print(f"[ERROR] Old vault metadata encryption failed: {e}")
+
+            # New Vault
+            initialize_vault_metadata(new_vault_path)
+            with open(VAULT_METADATA_FILE, 'w') as f:
+                json.dump(new_vault_meta, f)
+
+            try:
+                encrypt_vaultdata_file(new_outer_key)
+            except Exception as e:
+                print(f"[ERROR] New vault metadata error: {e}")
+
+            shutil.rmtree(old_vault_path)
+            return "SUCCESS"
+
+    except Exception as e:
+        print(f"[ERROR] Vault password could not be changed: {e}")
+
+
 # Delete a vault
 def delete_vault(username, vault_name, vault_keys, user_password):
     if not is_session_active():
@@ -1225,11 +1423,12 @@ def add_file_to_vault(vault_name, vault_keys, filepath, username, delete_origina
         print("[CRITICAL] Metadata encryption failed! Aborting secure delete to prevent data loss.")
         return False
 
-    if delete_original:
-        try:
-            secure_delete(filepath)
-        except Exception as e:
-            print(f"[WARNING] Could not delete original file: {e}")
+    if os.path.exists(encrypted_path):
+        if delete_original:
+            try:
+                secure_delete(filepath)
+            except Exception as e:
+                print(f"[WARNING] Could not delete original file: {e}")
     
     return True
 
@@ -1384,6 +1583,7 @@ def extract_file_from_vault(vault_name, vault_keys, file_name, destination_path)
     if file_hash != stored_file_hash:
         #print("Decrypted file corrupted!")
         raise Exception(f"[ERROR] Decrypted File Corrupted! Expected Hash: {stored_file_hash}, File Hash: {file_hash}")
+    return True
 
 # Password Manager
 def create_passMngr(passMngr_pass, pass_Mngr=None):
@@ -1678,6 +1878,54 @@ def remove_password_service(service_name, pass_Mngr=None):
     finally:
         encrypt_passdata_file(pm_outer_key)
 
+# Change PM Password
+def change_passMngr_password(old_passMngr_pass, new_passMngr_pass, passMngr=None):
+
+    if not authenticate_passMngr(old_passMngr_pass, pass_Mngr=None):
+        print("Master Password is wrong!")
+        return False
+
+    old_outer_key = session["pm_outer_key"]
+    old_inner_key = session["pm_inner_key"]
+    new_outer_key, _, _ = generate_key(new_passMngr_pass, USER_SYSTEM_SALT)
+
+    try:
+        if decrypt_passdata_file(old_outer_key):
+            with open(PASS_METADATA_FILE, 'r') as f:
+                pass_Mngrs = json.load(f)
+            passMngr = "Sirius Password Manager"
+            stored_salt = bytes.fromhex(pass_Mngrs[passMngr].get("inner_salt"))
+            _, old_auth_hash, _ = generate_key(old_passMngr_pass, stored_salt)
+            old_stored_hash = pass_Mngrs[passMngr].get("auth_hash")
+            if old_stored_hash == old_auth_hash.decode('utf-8'):
+                new_inner_key, new_auth_hash, _ = generate_key(new_passMngr_pass, stored_salt)
+                pass_Mngrs[passMngr]["auth_hash"] = new_auth_hash.decode('utf-8')
+                service_metadata = pass_Mngrs[passMngr]["services"]
+                new_pass_services = []
+                for service in service_metadata:
+                    s_name = service["service_name"]
+                    s_mail = service["service_user_mail"]
+                    old_enc_s_pass = service["service_pass"]
+                    decrypted_pass = decrypt_text(old_inner_key, old_enc_s_pass)
+                    encrypted_service_pass = encrypt_text(new_inner_key, decrypted_pass)
+                    new_pass_services.append(
+                        {
+                            "service_name": s_name,
+                            "service_user_mail": s_mail,
+                            "service_pass": encrypted_service_pass
+                        }
+                    )
+                pass_Mngrs[passMngr]["services"] = new_pass_services
+                session["pm_outer_key"] = new_outer_key
+                session["pm_inner_key"] = new_inner_key
+                with open(PASS_METADATA_FILE, 'w') as f:
+                    json.dump(pass_Mngrs, f)
+                encrypt_passdata_file(new_outer_key)
+                return True
+    except Exception as e:
+        print(f"[ERROR] Decryption error: {e}")
+        return False
+                
 # Delete Password Manager
 def delete_passMngr(username, user_password):
     load_user_context(username)

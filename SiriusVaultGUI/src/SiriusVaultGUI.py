@@ -6,7 +6,7 @@ import mimetypes
 from PyQt6 import QtWidgets, uic, QtCore, QtGui
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QTableWidgetItem, QHeaderView, QWidget, QHBoxLayout, QPushButton, QApplication, QAbstractItemView, QLineEdit
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor, QFont
-from PyQt6.QtCore import Qt, QTimer, QMimeData, QUrl
+from PyQt6.QtCore import Qt, QTimer, QMimeData, QEvent, QUrl, QTranslator, QCoreApplication
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 
@@ -22,8 +22,21 @@ except ImportError:
     sys.exit(1)
 
 # UI
-def get_ui_path(filename):
-    return os.path.join(os.path.dirname(__file__), "ui", filename)
+#def get_ui_path(filename):
+#    return os.path.join(os.path.dirname(__file__), "ui", filename)
+from ui.ui_login import Ui_MainWindow as UI_LoginWindow
+from ui.ui_main_menu import Ui_MainWindow as UI_MainMenu
+from ui.ui_vault_menu import Ui_Form as UI_VaultMenu
+from ui.ui_dialog_create_vault import Ui_Dialog as UI_CreateVaultDialog
+from ui.ui_dialog_vault_login import Ui_Dialog as UI_VaultLoginDialog
+from ui.ui_dialog_pm_addP import Ui_Dialog as UI_AddPasswordDialog
+from ui.ui_dialog_pm_auth_check import Ui_Dialog as UI_AuthCheckDialog
+from ui.ui_dialog_pm_auditP import Ui_Dialog as UI_AuditPasswordDialog
+from ui.ui_dialog_pm_genP import Ui_Dialog as UI_GeneratePasswordDialog
+from ui.ui_dialog_recovery import Ui_Dialog as UI_RecoveryDialog
+from ui.ui_dialog_mm_preview import Ui_Dialog as UI_MultimediaPreviewDialog
+from ui.ui_dialog_change_pass import Ui_Dialog as UI_ChangePasswordDialog
+
 
 # HELPER
 def create_text_icon(text, color="#a6adc8"):
@@ -114,11 +127,12 @@ class JumpSlider(QtWidgets.QSlider):
 # =============================================================================
 # 1. LOGIN WINDOW (Login, Register, USB Selection)
 # =============================================================================
-class LoginWindow(QtWidgets.QMainWindow):
+class LoginWindow(QtWidgets.QMainWindow, UI_LoginWindow):
     def __init__(self):
         super().__init__()
-        uic.loadUi(get_ui_path("login.ui"), self)
-        
+        #uic.loadUi(get_ui_path("login.ui"), self)
+        self.setupUi(self)
+
         self.selected_storage_path = None 
         self.temp_password_holder = None
 
@@ -133,12 +147,16 @@ class LoginWindow(QtWidgets.QMainWindow):
         self.btn_register_log.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(1))
         self.btn_ext_storage_log.clicked.connect(self.select_external_storage_login)
         self.input_user_password_log.returnPressed.connect(self.handle_login)
-
         self.btn_register_reg.clicked.connect(self.handle_register)
-        
         self.btn_register_back.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
-        
         self.btn_ext_storage_reg.clicked.connect(self.select_external_storage_reg)
+
+        # --- Language Change ---
+        self.combo_login_language.currentIndexChanged.connect(self.change_language)
+        self.combo_register_language.currentIndexChanged.connect(self.change_language) 
+        saved_lang_index = backend.get_config_settings("language_index", 1)
+        self.combo_login_language.setCurrentIndex(saved_lang_index)
+        self.combo_register_language.setCurrentIndex(saved_lang_index)
 
         # Default storage paht start
         backend.initialize_storage(default=True)
@@ -149,6 +167,31 @@ class LoginWindow(QtWidgets.QMainWindow):
             if dialog.recovered_password:
                 self.stackedWidget.setCurrentIndex(0)
 
+    def change_language(self, index):
+
+        app = QCoreApplication.instance()
+        if not hasattr(app, 'translator'):
+            app.translator = QTranslator()
+
+        supported_locales = ["tr_TR", "en_EN", "de_DE", "fr_FR", "es_ES"]
+
+        if index < 0 or index > len(supported_locales):
+            return
+
+        selected_locale = supported_locales[index]
+
+        if selected_locale == "en_EN":
+            app.removeTranslator(app.translator)
+        else:
+            qm_path = backend.get_resource_path(f"locales/{selected_locale}.qm")
+            if app.translator.load(qm_path):
+                app.installTranslator(app.translator)
+
+        backend.save_config_settings("language_index", index)
+        self.combo_login_language.setCurrentIndex(index)
+        self.combo_register_language.setCurrentIndex(index)
+        self.retranslateUi(self)
+
     def select_external_storage_login(self):
         path = QFileDialog.getExistingDirectory(self, "Select External Drive (USB/HDD)")
         if path:
@@ -156,7 +199,7 @@ class LoginWindow(QtWidgets.QMainWindow):
             if backend.initialize_storage(path, default=False):
                 self.update_storage_btn_ui(self.btn_ext_storage_log, path)
             else:
-                QMessageBox.critical(self, "Error", "Could not initialize storage.")
+                QMessageBox.critical(self, self.tr("Error"), self.tr("Could not initialize storage."))
 
     def select_external_storage_reg(self):
         path = QFileDialog.getExistingDirectory(self, "Select External Drive (USB/HDD)")
@@ -165,7 +208,7 @@ class LoginWindow(QtWidgets.QMainWindow):
             if backend.initialize_storage(path, default=False):
                 self.update_storage_btn_ui(self.btn_ext_storage_reg, path)
             else:
-                QMessageBox.critical(self, "Error", "Could not initialize storage.")
+                QMessageBox.critical(self, self.tr("Error"), self.tr("Could not initialize storage."))
 
     def update_storage_btn_ui(self, btn, path):
         short_path = path if len(path) < 20 else "..." + path[-15:]
@@ -184,7 +227,7 @@ class LoginWindow(QtWidgets.QMainWindow):
         password = self.input_user_password_log.text()
 
         if not username or not password:
-            QMessageBox.warning(self, "Input Error", "Please fill in all fields.")
+            QMessageBox.warning(self, self.tr("Input Error"), self.tr("Please fill in all fields."))
             return
         
         lockout_data = backend.get_lockout_data(username)
@@ -195,15 +238,16 @@ class LoginWindow(QtWidgets.QMainWindow):
             hours, remainder = divmod(remaining_seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
 
-            error_msg = f"Account locked due to multiple failed attempts.\n\n"
+            error_msg = self.tr("Account locked due to multiple failed attempts.\n\n")
+
             if hours > 0:
-                error_msg += f"Try again in {int(hours)} hour(s), {int(minutes)} minute(s) and {int(seconds)} second(s)."
+                error_msg += self.tr("Try again in {0} hour(s), {1} minute(s) and {2} second(s).").format(int(hours), int(minutes), int(seconds))
             elif minutes > 0:
-                error_msg += f"Try again in {minutes} minute(s) and {seconds} second(s)."
+                error_msg += self.tr("Try again in {0} minute(s) and {1} second(s).").format(int(minutes), int(seconds))
             else:
-                error_msg += f"Try again in {seconds} second(s)."
+                error_msg += self.tr("Try again in {0} second(s).").format(int(seconds))
             
-            QMessageBox.critical(self, "Account Locked", error_msg)
+            QMessageBox.critical(self, self.tr("Account Locked"), error_msg)
             return
         
         if backend.authenticate_user(username, password):
@@ -211,19 +255,19 @@ class LoginWindow(QtWidgets.QMainWindow):
             new_codes = backend.session.get("migrated_recovery_codes")
             if new_codes:
                 code_str = "\n".join(new_codes)
-                msg_text = "SECURITY INFRASTRUCTURE UPGRADED!\n\n"
-                msg_text += "Your account has been successfully migrated to the new Quantum-Resistant architecture.\n"
-                msg_text += "Your old recovery codes are now INVALID.\n"
-                msg_text += "Please save your new recovery codes in a secure location:\n\n"
+                msg_text = self.tr("SECURITY INFRASTRUCTURE UPGRADED!\n\n")
+                msg_text += self.tr("Your account has been successfully migrated to the new Quantum-Resistant architecture.\n")
+                msg_text += self.tr("Your old recovery codes are now INVALID.\n")
+                msg_text += self.tr("Please save your new recovery codes in a secure location:\n\n")
                 msg_text += code_str
 
-                QMessageBox.information(self, "System Upgrade Complete", msg_text)
+                QMessageBox.information(self, self.tr("System Upgrade Complete"), msg_text)
                 backend.session["migrated_recovery_codes"] = None
 
             self.open_main_menu()
         else:
             backend.record_failed_attempt(username)
-            QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
+            QMessageBox.warning(self, self.tr("Login Failed"), self.tr("Invalid username or password."))
 
     def handle_register(self):
         user = self.input_username_reg.text().strip()
@@ -231,31 +275,31 @@ class LoginWindow(QtWidgets.QMainWindow):
         confirm = self.input_confirm_user_password_reg.text()
 
         if not user or not pwd:
-            QMessageBox.warning(self, "Error", "Fields cannot be empty.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Fields cannot be empty."))
             return
 
         if pwd != confirm:
-            QMessageBox.warning(self, "Error", "Passwords do not match!")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Passwords do not match!"))
             return
 
         score, strength_msg = backend.audit_password_strenght(pwd)
         if score <= 40:
-            QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
+            QMessageBox.warning(self, self.tr("Weak Password"), self.tr("Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols."))
             return
         if backend.create_user(user, pwd):
             codes = backend.setup_recovery_codes(user, pwd)
-            msg_text = "Account created!"
+            msg_text = self.tr("Account created!")
             if codes:
                 code_str = "\n".join(codes)
-                msg_text += "IMPORTANT: SAVE THESE RECOVERY CODES!\n"
-                msg_text += "If you lose your password, these are the ONLY way to recover your account.\n\n"
+                msg_text += self.tr("\nIMPORTANT: SAVE THESE RECOVERY CODES!\n")
+                msg_text += self.tr("If you lose your password, these are the ONLY way to recover your account.\n\n")
                 msg_text += code_str
-                QMessageBox.information(self, "Success", msg_text)
+                QMessageBox.information(self, self.tr("Success"), msg_text)
             else:
-                QMessageBox.warning(self, "Warning", "Account created but recovery codes could not be generated.")        
+                QMessageBox.warning(self, self.tr("Warning"), self.tr("Account created but recovery codes could not be generated."))        
             self.stackedWidget.setCurrentIndex(0)
         else:
-            QMessageBox.warning(self, "Error", "User already exists.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("User already exists."))
 
     def open_main_menu(self):
         self.main_menu = MainMenuWindow(self.temp_password_holder)
@@ -265,14 +309,17 @@ class LoginWindow(QtWidgets.QMainWindow):
 # =============================================================================
 # 2. MAIN MENU WINDOW
 # =============================================================================
-class MainMenuWindow(QtWidgets.QMainWindow):
+class MainMenuWindow(QtWidgets.QMainWindow, UI_MainMenu):
     def __init__(self, user_password):
         super().__init__()
-        uic.loadUi(get_ui_path("main_menu.ui"), self)
-        
+        #uic.loadUi(get_ui_path("main_menu.ui"), self)
+        self.setupUi(self)
+
         self.user_password = user_password
         self.current_user = backend.session.get("authenticated_user")
-        self.saved_index = backend.session.get("session_timeout_index", 1)
+        self.saved_TO_index = backend.session.get("session_timeout_index", 1)
+        self.saved_lang_index = backend.get_config_settings("language_index", 1)
+        self.saved_theme_index = backend.get_config_settings("theme_index", 0)
         self.is_logging_out = False 
 
         setup_password_toggle(self.input_pm_auth_pass)
@@ -301,14 +348,20 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         # --- Settings ---
         self.btn_settings_dZ_deleteAC.clicked.connect(self.delete_account_logic)
         self.btn_settings_dZ_deleteAC_2.clicked.connect(self.delete_pm_logic)
+        self.btn_settings_change_pm_pass.clicked.connect(self.open_pm_pass_change_dialog)
+        self.btn_settings_change_user_pass.clicked.connect(self.open_account_pass_change_dialog)
         if hasattr(backend, 'USER_DIR'):
              self.lineEdit_cur_storage_path.setPlaceholderText(backend.USER_DIR)
         self.btn_settings_sto_move.clicked.connect(self.move_storage_logic)
         self.btn_settings_sto_change.hide() # Remove this btn from ui
-        self.comboBox.setCurrentIndex(self.saved_index)
+        self.comboBox_timeout.setCurrentIndex(self.saved_TO_index)
         timeouts = {0: 60, 1: 300, 2: 600, 3: 1800}
-        backend.SESSION_TIMEOUT = timeouts.get(self.saved_index, 300)
-        self.comboBox.currentIndexChanged.connect(self.update_session_timeout)
+        backend.SESSION_TIMEOUT = timeouts.get(self.saved_TO_index, 300)
+        self.comboBox_timeout.currentIndexChanged.connect(self.update_session_timeout)
+        self.comboBox_language.setCurrentIndex(self.saved_lang_index)
+        self.comboBox_language.currentIndexChanged.connect(self.change_app_language)
+        self.comboBox_theme.setCurrentIndex(self.saved_theme_index)
+        self.comboBox_theme.currentIndexChanged.connect(self.change_app_theme)
 
         # --- Table Config ---
         # Select Rows
@@ -332,6 +385,29 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         self.session_monitor.timeout.connect(self.verify_session)
         self.session_monitor.start(2000)
 
+    def change_app_language(self, index):
+
+        app = QCoreApplication.instance()
+        if not hasattr(app, 'translator'):
+            app.translator = QTranslator()
+
+        supported_locales = ["tr_TR", "en_EN"]
+
+        if index < 0 or index >= len(supported_locales):
+            return
+
+        selected_locale = supported_locales[index]
+
+        if selected_locale == "en_EN":
+            app.removeTranslator(app.translator)
+        else:
+            qm_path = backend.get_resource_path(f"locales/{selected_locale}.qm")
+            if app.translator.load(qm_path):
+                app.installTranslator(app.translator)
+
+        backend.save_config_settings("language_index", index)
+        self.comboBox_language.setCurrentIndex(index)
+
     def show_my_vaults(self):
         self.stackedWidget.setCurrentIndex(0)
         self.load_vaults_table()
@@ -352,7 +428,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             if hasattr(self, 'vault_window') and self.vault_window.isVisible():
                 self.vault_window.close()
             
-            QMessageBox.warning(self, "Session Expired", "Your session has expired due to inactivity/lockdown.\nPlease log in again.")
+            QMessageBox.warning(self, self.tr("Session Expired"), self.tr("Your session has expired due to inactivity/lockdown.\nPlease log in again."))
             
             self.handle_logout()
 
@@ -394,6 +470,12 @@ class MainMenuWindow(QtWidgets.QMainWindow):
                 btn_unlock.setStyleSheet("background-color: #a6e3a1; border: none; border-radius: 4px;")
                 btn_unlock.clicked.connect(lambda _, r=row: self.on_vault_double_click(r, 0))
 
+                btn_change_vault_pass = QPushButton("🔑")  # Alternatif: "🔐" veya "🔄"
+                btn_change_vault_pass.setToolTip("Change Vault Password")
+                btn_change_vault_pass.setFixedSize(35, 30)
+                btn_change_vault_pass.setStyleSheet("background-color: #a6e3a1; border: none; border-radius: 4px;")
+                btn_change_vault_pass.clicked.connect(lambda _, v=v_name: self.change_vault_pass(v))
+
                 btn_del = QPushButton("🗑️")
                 btn_del.setToolTip("Delete Vault")
                 btn_del.setFixedSize(35, 30)
@@ -401,6 +483,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
                 btn_del.clicked.connect(lambda _, v=v_name: self.delete_vault_click(v))
                 
                 layout.addWidget(btn_unlock)
+                layout.addWidget(btn_change_vault_pass)
                 layout.addWidget(btn_del)
                 layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 
@@ -410,7 +493,8 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         dialog = VaultLoginDialog(vault_name, self.user_password, self)
         if dialog.exec():
             vault_keys = dialog.vault_keys
-            confirm = QMessageBox.question(self, "Confirm Delete", f"Delete vault '{vault_name}' permanently?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            question_text = self.tr("Delete vault '{0}' permanently?").format(vault_name)
+            confirm = QMessageBox.question(self, self.tr("Confirm Delete"), question_text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if confirm == QMessageBox.StandardButton.Yes:
                 backend.delete_vault(self.current_user, vault_name, vault_keys, self.user_password)
                 self.load_vaults_table()
@@ -418,7 +502,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
     def open_create_vault_dialog(self):
         dialog = CreateVaultDialog(self.user_password, self)
         if dialog.exec():
-            self.load_vaults_table() 
+            self.load_vaults_table()
+
+    def change_vault_pass(self, vault_name):
+        VaultPasswordChangeDialog(vault_name, self.user_password).exec()
 
     def on_vault_double_click(self, row, column):
         vault_name = self.table_vaults.item(row, 0).text()
@@ -448,7 +535,7 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             self.load_pm_table()
         else:
             self.input_pm_auth_pass.clear()
-            QMessageBox.warning(self, "Error", "Incorrect Password.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Incorrect Password."))
 
     def handle_pm_register(self):
         passMngr_pass = self.input_pm_reg_pass.text()
@@ -456,18 +543,18 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         if passMngr_pass == confirm and passMngr_pass:
             score, strength_msg = backend.audit_password_strenght(passMngr_pass)
             if score <= 40:
-                QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
+                QMessageBox.warning(self, self.tr("Weak Password"), self.tr("Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols."))
                 return
             if backend.create_passMngr(passMngr_pass):
                 self.master_pm_password = passMngr_pass
-                QMessageBox.information(self, "Success", "Password Manager Created!")
+                QMessageBox.information(self, self.tr("Success"), self.tr("Password Manager Created!"))
                 self.input_pm_reg_pass.clear()
                 self.input_pm_reg_pass_confirm.clear()
                 self.stack_pass_manager.setCurrentIndex(2)
         else:
             self.input_pm_reg_pass.clear()
             self.input_pm_reg_pass_confirm.clear()
-            QMessageBox.warning(self, "Error", "Passwords do not match.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Passwords do not match."))
 
     def load_pm_table(self):
         self.table_pm_list.setRowCount(0)
@@ -567,7 +654,8 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         GeneratePasswordDialog(self).exec()
 
     def delete_pm_service(self, service_name):
-        reply = QMessageBox.question(self, "Delete", f"Remove '{service_name}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        question_text = self.tr("Remove '{0}'?").format(service_name)
+        reply = QMessageBox.question(self, self.tr("Delete"), question_text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             
             backend.remove_password_service(service_name)
@@ -590,10 +678,10 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         if not new_path:
             return
         
-        confirm = QMessageBox.warning(self, "Move Data", "Your data will be moved to the new location.\nYou will be logged out after this operation to secure your files.\nProceed?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = QMessageBox.warning(self, self.tr("Move Data"), self.tr("Your data will be moved to the new location.\nYou will be logged out after this operation to secure your files.\nProceed?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
         if confirm == QMessageBox.StandardButton.Yes:
-            QMessageBox.information(self, "Processing", "Moving your data... Please wait.")
+            QMessageBox.information(self, self.tr("Processing"), self.tr("Moving your data... Please wait."))
             QApplication.processEvents()
 
             if os.path.exists(backend.USER_DATA_FILE):
@@ -609,11 +697,11 @@ class MainMenuWindow(QtWidgets.QMainWindow):
                 backend.initialize_storage(new_path, default=False)
                 backend.load_user_context(self.current_user)
                 self.lineEdit_cur_storage_path.setPlaceholderText(backend.USER_DIR)
-                QMessageBox.information(self, "Success", "Your data has been successfully moved!\nPlease select your new storage on the login screen next time.")
+                QMessageBox.information(self, self.tr("Success"), self.tr("Your data has been successfully moved!\nPlease select your new storage on the login screen next time."))
             elif result == "EXISTS":
-                QMessageBox.warning(self, "Error", "Your user data already exists in the target location.")
+                QMessageBox.warning(self, self.tr("Error"), self.tr("Your user data already exists in the target location."))
             else:
-                QMessageBox.critical(self, "Error", "An error occurred while moving your data.")
+                QMessageBox.critical(self, self.tr("Error"), self.tr("An error occurred while moving your data."))
 
     def update_session_timeout(self, index):
         timeouts = {
@@ -634,8 +722,14 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             backend.update_user_timeout_setting(self.current_user, self.user_password, index)
             print("User timeout setting saved!")
 
+    def open_account_pass_change_dialog(self):
+        AccountPasswordChangeDialog(self).exec()
+
+    def open_pm_pass_change_dialog(self):
+        PasswordManagerPasswordChangeDialog(self).exec()
+  
     def delete_account_logic(self):
-        confirm = QMessageBox.warning(self, "DANGER", "All data will be lost.\nProceed?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = QMessageBox.warning(self, self.tr("DANGER"), self.tr("All data will be lost.\nProceed?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             try:
                 backend.delete_user(self.current_user, self.user_password)
@@ -647,13 +741,13 @@ class MainMenuWindow(QtWidgets.QMainWindow):
             self.close()
 
     def delete_pm_logic(self):
-        confirm = QMessageBox.question(self, "Delete PM", "Delete Password Manager?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = QMessageBox.question(self, self.tr("Delete Password Manager"), self.tr("All Password(s) will be deleted.\n Proceed?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             if backend.delete_passMngr(self.current_user, self.user_password):
-                QMessageBox.information(self, "Deleted", "Password Manager deleted.")
+                QMessageBox.information(self, self.tr("Success!"), self.tr("Password Manager deleted."))
                 self.check_pm_status()
             else:
-                QMessageBox.warning(self, "Warning!", "Password Manager not deleted.")
+                QMessageBox.warning(self, self.tr("Warning!"), self.tr("Password Manager not deleted."))
                 self.check_pm_status()
 
     def handle_logout(self):
@@ -661,6 +755,13 @@ class MainMenuWindow(QtWidgets.QMainWindow):
         clear_sensitive_clipboard()
         self.is_logging_out = True 
         self.close() 
+
+    def changeEvent(self, event):
+
+        if event.type() == QEvent.Type.LanguageChange:
+            self.retranslateUi(self)
+
+        super().changeEvent(event)
 
     def closeEvent(self, event):
         print("[INFO] Cleaning up and encrypting data...")
@@ -679,10 +780,11 @@ class MainMenuWindow(QtWidgets.QMainWindow):
 # =============================================================================
 # 3. VAULT CONTENT WINDOW
 # =============================================================================
-class VaultMenuWindow(QtWidgets.QWidget):
+class VaultMenuWindow(QtWidgets.QWidget, UI_VaultMenu):
     def __init__(self, vault_name, vault_keys, user_password, parent_menu=None):
         super().__init__()
-        uic.loadUi(get_ui_path("vault_menu.ui"), self)
+        #uic.loadUi(get_ui_path("vault_menu.ui"), self)
+        self.setupUi(self)
         
         self.vault_name = vault_name
         self.vault_keys = vault_keys 
@@ -778,7 +880,7 @@ class VaultMenuWindow(QtWidgets.QWidget):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Encrypt")
         if not files: return
 
-        reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original files from your computer after they encrypted in the vault?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(self, self.tr("Secure Delete"), self.tr("Do you want to Securely Delete the original files from your computer after they encrypted in the vault?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         delete_originals = (reply == QMessageBox.StandardButton.Yes)
         for f in files:
             self.process_file_import(f, delete_originals)
@@ -787,17 +889,19 @@ class VaultMenuWindow(QtWidgets.QWidget):
     def import_folder_dialog(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder to Encrypt")
         if folder_path:
-            reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original folder and all its contents after encryption?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            reply = QMessageBox.question(self, self.tr("Secure Delete"), self.tr("Do you want to Securely Delete the original folder and all its contents after encryption?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
             delete_originals = (reply == QMessageBox.StandardButton.Yes)
 
-            QMessageBox.information(self, "Processing", "Encrypting folder contents... This may take a moment.")
+            QMessageBox.information(self, self.tr("Processing"), self.tr("Encrypting folder contents... This may take a moment."))
             QApplication.processEvents()
             
             try:
                 count = backend.add_folder_recursive(self.vault_name, self.vault_keys, folder_path, self.current_user, delete_original=delete_originals)
-                QMessageBox.information(self, "Success", f"{count} files encrypted successfully.")
+                msg_text = self.tr("{0} files encrypted successfully.").format(count)
+                QMessageBox.information(self, self.tr("Success"), msg_text)
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                error_msg = self.tr("An unexpected error occured:\n{0}").format(str(e))
+                QMessageBox.critical(self, self.tr("Error"), error_msg)
             
             self.load_files()
 
@@ -812,16 +916,18 @@ class VaultMenuWindow(QtWidgets.QWidget):
             dialog.exec()
             self.load_files()
         else:
-            QMessageBox.critical(self, "ERROR", "Multimedia file cannot decrypted!")
+            QMessageBox.critical(self, self.tr("ERROR"), self.tr("Multimedia file cannot decrypted!"))
 
     def extract_file(self, file_name):
         dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination")
         if dest_folder:
                 backend.extract_file_from_vault(self.vault_name, self.vault_keys, file_name, dest_folder)
-                QMessageBox.information(self, "Success", f"File extracted to {dest_folder}")
+                msg_text = self.tr("File extracted to {0}").format(dest_folder)
+                QMessageBox.information(self, self.tr("Success"), msg_text)
 
     def delete_file(self, file_name):
-        confirm = QMessageBox.question(self, "Delete", f"Delete {file_name}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        question_text = self.tr("Delete {0}?").format(file_name)
+        confirm = QMessageBox.question(self, self.tr("Delete"), question_text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
                 backend.remove_file_from_vault(self.vault_name, file_name, self.current_user, self.vault_keys)
                 self.load_files()
@@ -837,10 +943,10 @@ class VaultMenuWindow(QtWidgets.QWidget):
         if not urls:
             return
         
-        reply = QMessageBox.question(self, "Secure Delete", "Do you want to Securely Delete the original files/folders from your computer after they are encrypted into the vault?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(self, self.tr("Secure Delete"), self.tr("Do you want to Securely Delete the original files/folders from your computer after they are encrypted into the vault?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         delete_originals = (reply == QMessageBox.StandardButton.Yes)
 
-        QMessageBox.information(self, "Processing", "Encrypting dropped items...")
+        QMessageBox.information(self, self.tr("Processing"), self.tr("Encrypting dropped items..."))
         QApplication.processEvents()
         
         try:
@@ -851,7 +957,8 @@ class VaultMenuWindow(QtWidgets.QWidget):
                 elif os.path.isfile(local_path):
                     backend.add_file_to_vault(self.vault_name, self.vault_keys, local_path, self.current_user, delete_original=delete_originals)
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"An error occurred during import:\n{str(e)}")
+            error_msg = self.tr("An error occurred during import:\n{0}").format(str(e))
+            QMessageBox.warning(self, self.tr("Error"), error_msg)
         
         self.load_files()
 
@@ -869,10 +976,12 @@ class VaultMenuWindow(QtWidgets.QWidget):
 # =============================================================================
 # 4. DIALOG CLASSES
 # =============================================================================
-class CreateVaultDialog(QtWidgets.QDialog):
+class CreateVaultDialog(QtWidgets.QDialog, UI_CreateVaultDialog):
     def __init__(self, user_password, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_create_vault.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_create_vault.ui"), self)
+        self.setupUi(self)
+
         self.user_password = user_password
 
         setup_password_toggle(self.input_dialog_vpassword)
@@ -882,36 +991,39 @@ class CreateVaultDialog(QtWidgets.QDialog):
         self.btn_dialog_vCreate_cancel.clicked.connect(self.reject)
 
     def validate(self):
-        name = self.input_dialog_vname.text()
+        vault_name = self.input_dialog_vname.text()
         pwd = self.input_dialog_vpassword.text()
         confirm = self.input_dialog_vcpassword.text()
         
-        if not name or not pwd:
-            QMessageBox.warning(self, "Error", "Fields cannot be empty.")
+        if not vault_name or not pwd:
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Fields cannot be empty."))
             return
         if pwd != confirm:
-            QMessageBox.warning(self, "Error", "Passwords do not match.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Passwords do not match."))
             return
         
         score, strength_msg = backend.audit_password_strenght(pwd)
         if score <= 40:
-            QMessageBox.warning(self, "Weak Password", "Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols.")
+            QMessageBox.warning(self, self.tr("Weak Password"), self.tr("Your password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols."))
             return
         
-        result = backend.create_vault(name, pwd, self.user_password)
+        result = backend.create_vault(vault_name, pwd, self.user_password)
             
         if result == "SUCCESS":
-            QMessageBox.information(self, "Success", f"Vault '{name}' created.")
+            msg_text = self.tr("Vault '{0}' created.").format(vault_name)
+            QMessageBox.information(self, self.tr("Success"), msg_text)
             self.accept()
         elif result == "SAME_NAME":
-            QMessageBox.warning(self, "Error", "Vault name already exists.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Vault name already exists."))
         else:
-            QMessageBox.warning(self, "Error", "Could not create vault.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Could not create vault."))
 
-class VaultLoginDialog(QtWidgets.QDialog):
+class VaultLoginDialog(QtWidgets.QDialog, UI_VaultLoginDialog):
     def __init__(self, vault_name, user_password, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_vault_login.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_vault_login.ui"), self)
+        self.setupUi(self)
+        
         self.vault_name = vault_name
         self.user_password = user_password
         self.vault_key = None
@@ -931,12 +1043,14 @@ class VaultLoginDialog(QtWidgets.QDialog):
             self.vault_keys = keys
             self.accept()
         else:
-            QMessageBox.warning(self, "Error", "Incorrect Password.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Incorrect Password."))
 
-class AddPasswordDialog(QtWidgets.QDialog):
+class AddPasswordDialog(QtWidgets.QDialog, UI_AddPasswordDialog):
     def __init__(self, master_password, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_pm_addP.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_pm_addP.ui"), self)
+        self.setupUi(self)
+
         self.master_password = master_password
 
         setup_password_toggle(self.input_service_pass)
@@ -962,17 +1076,19 @@ class AddPasswordDialog(QtWidgets.QDialog):
         confirm = self.input_service_confirm_pass.text()
 
         if s_pass != confirm:
-            QMessageBox.warning(self, "Error", "Passwords do not match.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Passwords do not match."))
             return
         
         backend.add_password_to_PassMngr(s_name, s_user_mail, s_pass)
         
         self.accept()
 
-class AuthCheckDialog(QtWidgets.QDialog):
+class AuthCheckDialog(QtWidgets.QDialog, UI_AuthCheckDialog):
     def __init__(self, service_name, master_password, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_pm_auth_check.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_pm_auth_check.ui"), self)
+        self.setupUi(self)
+
         self.lbl_service_title.setText(f"Service: {service_name}")
         self.master_password = master_password
         self.service_name = service_name
@@ -996,7 +1112,7 @@ class AuthCheckDialog(QtWidgets.QDialog):
             self.show_revealed_password(raw_pass)
             self.stackedWidget.setCurrentIndex(1) 
         else:
-            QMessageBox.warning(self, "Error", "Incorrect Master Password.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Incorrect Master Password."))
 
     def show_revealed_password(self, password):
         self.output_dialog_reqP_serviceP.setText(password)
@@ -1013,10 +1129,12 @@ class AuthCheckDialog(QtWidgets.QDialog):
         self.btn_dialog_reqP_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_reqP_copy.setText(original_text))
 
-class AuditPasswordDialog(QtWidgets.QDialog):
+class AuditPasswordDialog(QtWidgets.QDialog, UI_AuditPasswordDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_pm_auditP.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_pm_auditP.ui"), self)
+        self.setupUi(self)
+
         setup_password_toggle(self.input_dialog_check_strength)
 
         self.input_dialog_check_strength.textChanged.connect(self.update_meter)
@@ -1037,10 +1155,11 @@ class AuditPasswordDialog(QtWidgets.QDialog):
         """)
         self.lbl_audit_message.setText(msg)
 
-class GeneratePasswordDialog(QtWidgets.QDialog):
+class GeneratePasswordDialog(QtWidgets.QDialog, UI_GeneratePasswordDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_pm_genP.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_pm_genP.ui"), self)
+        self.setupUi(self)
 
         self.layout().setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetFixedSize)
 
@@ -1200,12 +1319,191 @@ class GeneratePasswordDialog(QtWidgets.QDialog):
             original_text = self.btn_dialog_genP_copy.text()
             self.btn_dialog_genP_copy.setText("Copied!")
             QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_genP_copy.setText(original_text))
-        
-class RecoveryDialog(QtWidgets.QDialog):
+
+class AccountPasswordChangeDialog(QtWidgets.QDialog, UI_ChangePasswordDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_recovery.ui"), self)
+        self.setupUi(self)
+        self.stackedWidget.setCurrentIndex(0)
+        setup_password_toggle(self.input_old_usr_pass)
+        setup_password_toggle(self.input_new_usr_pass)
+        setup_password_toggle(self.input_confirm_new_usr_pass)
+        self.setWindowTitle(self.tr("Change Account Password"))
+        self.btn_account_change_pass.clicked.connect(self.change_account_pass)
+        self.btn_account_cancel.clicked.connect(self.reject)
+        self.input_new_usr_pass.textChanged.connect(self.update_meter)
+
+    def change_account_pass(self):
+        old_usr_pass = self.input_old_usr_pass.text().strip()
+        new_usr_pass = self.input_new_usr_pass.text().strip()
+        confirm_new_usr_pass = self.input_confirm_new_usr_pass.text().strip()
+
+        if not old_usr_pass or not new_usr_pass or not confirm_new_usr_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Please fill in all fields."))
+            return
+        if not backend.authenticate_user(old_usr_pass):
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Invalid old user password."))
+            return
+        if new_usr_pass != confirm_new_usr_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Passwords do not match."))
+            return
+        if old_usr_pass == new_usr_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Your old and new passwords are the same."))
+            return
+        score, msg = backend.audit_password_strenght(new_usr_pass)
+        if score <= 40:
+            QMessageBox.warning(self, self.tr("Weak Password"), self.tr("Your new user password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols."))
+            return
+        self.username = backend.session["authenticated_user"]
+        result, new_recovery_codes = backend.change_user_password(self.username, old_usr_pass, new_usr_pass)
+        if result:
+            msg_text = self.tr("Account password changed!")
+            msg_text += ("\nNew Recovery codes Created.")
+            code_str = "\n".join(new_recovery_codes)
+            msg_text += self.tr("\nIMPORTANT: SAVE THESE NEW RECOVERY CODES!\n")
+            msg_text += self.tr("If you lose your password, these are the ONLY way to recover your account.\n\n")
+            msg_text += code_str
+            QMessageBox.information(self, self.tr("Success"), msg_text)
+            self.accept()
+        else:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Account password could not be changed."))
+            return
+
+    def update_meter(self):
+        text = self.input_new_usr_pass.text()
+        total, msg = backend.audit_password_strenght(text)
+        self.progressBar_account_pass.setValue(total)
+        color = "#f38ba8" 
+        if msg == "Moderate":
+            color = "#fab387"
+        elif msg == "Strong":
+            color = "#a6e3a1"
+        self.progressBar_account_pass.setStyleSheet(f"""
+            QProgressBar {{ border: none; background-color: #313244; border-radius: 2px; height: 9px; text-align: center; }}
+            QProgressBar::chunk {{ background-color: {color}; border-radius: 2px; }}
+        """)
         
+
+class PasswordManagerPasswordChangeDialog(QtWidgets.QDialog, UI_ChangePasswordDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUi(self)
+        self.stackedWidget.setCurrentIndex(1)
+        setup_password_toggle(self.input_old_PM_pass)
+        setup_password_toggle(self.input_new_PM_pass)
+        setup_password_toggle(self.input_confirm_new_PM_pass)
+        self.setWindowTitle(self.tr("Change Password Manager Password"))
+        self.btn_PM_change_pass.clicked.connect(self.change_PM_pass)
+        self.btn_PM_cancel.clicked.connect(self.reject)
+        self.input_new_PM_pass.textChanged.connect(self.update_meter)
+
+    def change_PM_pass(self):
+        old_PM_pass = self.input_old_PM_pass.text().strip()
+        new_PM_pass = self.input_new_PM_pass.text().strip()
+        confirm_new_PM_pass = self.input_confirm_new_PM_pass.text().strip()
+
+        if not old_PM_pass or not new_PM_pass or not confirm_new_PM_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Please fill in all fields."))
+            return
+        if not backend.authenticate_passMngr(old_PM_pass):
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Invalid old Password Manager password."))
+            return
+        if new_PM_pass != confirm_new_PM_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Passwords do not match."))
+            return
+        if old_PM_pass == new_PM_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Your old and new passwords are the same."))
+            return
+        score, msg = backend.audit_password_strenght(new_PM_pass)
+        if score <= 40:
+            QMessageBox.warning(self, self.tr("Weak Password"), self.tr("Your new Password Manager password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols."))
+            return
+        result = backend.change_passMngr_password(old_PM_pass, new_PM_pass)
+        if result:
+            self.accept()
+        else:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Password Manager password could not be changed."))
+            return
+
+    def update_meter(self):
+        text = self.input_new_PM_pass.text()
+        total, msg = backend.audit_password_strenght(text)
+        self.progressBar_PM_pass.setValue(total)
+        color = "#f38ba8" 
+        if msg == "Moderate":
+            color = "#fab387"
+        elif msg == "Strong":
+            color = "#a6e3a1"
+        self.progressBar_account_pass.setStyleSheet(f"""
+            QProgressBar {{ border: none; background-color: #313244; border-radius: 2px; height: 9px; text-align: center; }}
+            QProgressBar::chunk {{ background-color: {color}; border-radius: 2px; }}
+        """)
+
+
+class VaultPasswordChangeDialog(QtWidgets.QDialog, UI_ChangePasswordDialog):
+    def __init__(self, vault_name, user_password, parent=None):
+        super().__init__(parent)
+        self.setupUi(self)
+        self.vault_name = vault_name
+        self.user_password = user_password
+        self.stackedWidget.setCurrentIndex(2)
+        setup_password_toggle(self.input_old_vault_pass)
+        setup_password_toggle(self.input_new_vault_pass)
+        setup_password_toggle(self.input_confirm_new_vault_pass)
+        self.setWindowTitle(self.tr("Change Vault Password"))
+        self.btn_vault_change_pass.clicked.connect(self.change_vault_pass)
+        self.btn_vault_cancel.clicked.connect(self.reject)
+        self.input_new_vault_pass.textChanged.connect(self.update_meter)
+
+    def change_vault_pass(self):
+        old_vault_pass = self.input_old_vault_pass.text().strip()
+        new_vault_pass = self.input_new_vault_pass.text().strip()
+        confirm_new_vault_pass = self.input_confirm_new_vault_pass.text().strip()
+
+        if not old_vault_pass or not new_vault_pass or not confirm_new_vault_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Please fill in all fields."))
+            return
+        if not backend.authenticate_vault(self.vault_name, old_vault_pass, self.user_password):
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Invalid old vault password."))
+            return
+        if new_vault_pass != confirm_new_vault_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Passwords do not match."))
+            return
+        if old_vault_pass == new_vault_pass:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Your old and new passwords are the same."))
+            return
+        score, msg = backend.audit_password_strenght(new_vault_pass)
+        if score <= 40:
+            QMessageBox.warning(self, self.tr("Weak Password"), self.tr("Your new vault password is too weak!\nPlease use a longer password with uppercase, lowercase, numbers and symbols."))
+            return
+        result = backend.change_vault_password(self.user_password, self.vault_name, old_vault_pass, new_vault_pass)
+        if result:
+            self.accept()
+        else:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Vault password could not be changed."))
+            return
+
+    def update_meter(self):
+        text = self.input_new_vault_pass.text()
+        total, msg = backend.audit_password_strenght(text)
+        self.progressBar_vault_pass.setValue(total)
+        color = "#f38ba8" 
+        if msg == "Moderate":
+            color = "#fab387"
+        elif msg == "Strong":
+            color = "#a6e3a1"
+        self.progressBar_account_pass.setStyleSheet(f"""
+            QProgressBar {{ border: none; background-color: #313244; border-radius: 2px; height: 9px; text-align: center; }}
+            QProgressBar::chunk {{ background-color: {color}; border-radius: 2px; }}
+        """)
+
+
+class RecoveryDialog(QtWidgets.QDialog, UI_RecoveryDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        #uic.loadUi(get_ui_path("dialog_recovery.ui"), self)
+        self.setupUi(self)
+
         self.setWindowTitle("Account Recovery")
         
         self.stackedWidget.setCurrentIndex(0)
@@ -1230,7 +1528,7 @@ class RecoveryDialog(QtWidgets.QDialog):
         code = self.input_rec_code.text().strip()
         
         if not user or not code:
-            QMessageBox.warning(self, "Error", "Please fill in all fields.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Please fill in all fields."))
             return
 
         QApplication.processEvents()
@@ -1246,7 +1544,7 @@ class RecoveryDialog(QtWidgets.QDialog):
             self.stackedWidget.setCurrentIndex(1)
             
         else:
-            QMessageBox.critical(self, "Failed", "Invalid Username or Recovery Code.\nPlease check your inputs.")
+            QMessageBox.critical(self, self.tr("Failed"), self.tr("Invalid Username or Recovery Code.\nPlease check your inputs."))
 
     def copy_to_clipboard(self):
         secure_copy_to_clipboard(self.output_recovered_pass.text())
@@ -1254,10 +1552,11 @@ class RecoveryDialog(QtWidgets.QDialog):
         self.btn_dialog_rec_copy.setText("Copied!")
         QtCore.QTimer.singleShot(1000, lambda: self.btn_dialog_rec_copy.setText(original_text))
 
-class MultimediaManagerDialog(QtWidgets.QDialog):
+class MultimediaManagerDialog(QtWidgets.QDialog, UI_MultimediaPreviewDialog):
     def __init__(self, temp_path, file_name, parent=None):
         super().__init__(parent)
-        uic.loadUi(get_ui_path("dialog_mm_preview.ui"), self)
+        #uic.loadUi(get_ui_path("dialog_mm_preview.ui"), self)
+        self.setupUi(self)
 
         self.temp_path = temp_path
         self.file_name = file_name

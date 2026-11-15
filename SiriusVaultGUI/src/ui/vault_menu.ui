@@ -16,10 +16,6 @@
   <property name="windowTitle">
    <string>SIRIUS VAULT</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
-  </property>
   <property name="styleSheet">
    <string notr="true">QWidget {
     background-color: #1e1e2e;

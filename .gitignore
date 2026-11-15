@@ -29,6 +29,12 @@ config.json
 *.json
 *.json.enc
 
+# Old UI files
+#*.ui
+
+# Translate files
+*.ts
+
 # IDE files
 .vscode/
 

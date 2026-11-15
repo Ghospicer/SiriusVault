@@ -25,10 +25,6 @@
   <property name="windowTitle">
    <string>Audit Password</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>../assets/siriusvault.ico</normaloff>../assets/siriusvault.ico</iconset>
-  </property>
   <property name="styleSheet">
    <string notr="true">QDialog {
     background-color: #1e1e2e;
@@ -62,7 +58,7 @@
       <string>Audit Password</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -91,7 +87,7 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Info: This tool is for manual testing. Your saved passwords are automatically audited and shown in the 'Strength' column of your password list.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="textFormat">
-      <enum>Qt::AutoText</enum>
+      <enum>Qt::TextFormat::AutoText</enum>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -155,7 +151,7 @@ QLineEdit:focus {
 }</string>
        </property>
        <property name="echoMode">
-        <enum>QLineEdit::Password</enum>
+        <enum>QLineEdit::EchoMode::Password</enum>
        </property>
        <property name="placeholderText">
         <string>Enter password you want to audit</string>
@@ -224,7 +220,7 @@ QProgressBar::chunk {
       <string>Enter a password to see strength.</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
