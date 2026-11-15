@@ -1,11 +1,6 @@
-# Local folders Terminal Version
-SiriusVault/file in/
-SiriusVault/file out/
+# Local folders
 SiriusVault/SiriusData/
 SiriusVault/temp/
-# Local folders GUI version
-SiriusVaultGUI/SiriusData/
-SiriusVaultGUI/temp/
 
 # Local Test Files
 TEST/
